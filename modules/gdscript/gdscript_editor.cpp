@@ -2342,6 +2342,9 @@ static void _find_enumeration_candidates(GDScriptParser::CompletionContext &p_co
 		ClassDB::get_enum_constants(class_name, enum_name, &enum_constants);
 		for (const StringName &E : enum_constants) {
 			String candidate = class_name + "." + E;
+			if (candidate[0] == '_') {
+				candidate = candidate.substr(1, -1);
+			}
 			int location = _get_enum_constant_location(class_name, E);
 			ScriptLanguage::CodeCompletionOption option(candidate, ScriptLanguage::CODE_COMPLETION_KIND_ENUM, location);
 			r_result.insert(option.display, option);
