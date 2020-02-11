@@ -430,6 +430,11 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 				ucode += _prestr(E->get().precision);
 				ucode += _typestr(E->get().type);
 				ucode += " " + _mkid(E->key());
+				if (E->get().array_size > 0) {
+					ucode += "[";
+					ucode += itos(E->get().array_size);
+					ucode += "]";
+				}
 				ucode += ";\n";
 				if (SL::is_sampler_type(E->get().type)) {
 					r_gen_code.vertex_global += ucode;
@@ -450,8 +455,12 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 						uses_uniforms = true;
 					}
 					uniform_defines.write[E->get().order] = ucode;
-					uniform_sizes.write[E->get().order] = _get_datatype_size(E->get().type);
-					uniform_alignments.write[E->get().order] = _get_datatype_alignment(E->get().type);
+					int array_size = 1;
+					if (E->get().array_size > 0) {
+						array_size = E->get().array_size * 4;
+					}
+					uniform_sizes.write[E->get().order] = _get_datatype_size(E->get().type) * array_size;
+					uniform_alignments.write[E->get().order] = _get_datatype_alignment(E->get().type) * array_size;
 				}
 
 				p_actions.uniforms->insert(E->key(), E->get());
@@ -770,8 +779,12 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 
 			if (p_default_actions.renames.has(anode->name))
 				code = p_default_actions.renames[anode->name];
-			else
+			else {
 				code = _mkid(anode->name);
+				if (actions.base_uniform_string != String() && shader->uniforms.has(anode->name) && shader->uniforms[anode->name].texture_order < 0) {
+					code = actions.base_uniform_string + code;
+				}
+			}
 
 			if (anode->call_expression != NULL) {
 				code += ".";

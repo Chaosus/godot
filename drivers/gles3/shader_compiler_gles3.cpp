@@ -394,6 +394,10 @@ String ShaderCompilerGLES3::_dump_node_code(SL::Node *p_node, int p_level, Gener
 						uses_uniforms = true;
 					}
 					uniform_defines.write[E->get().order] = ucode;
+					int array_size = 1;
+					if (E->get().array_size > 0) {
+						array_size = E->get().array_size;
+					}
 					uniform_sizes.write[E->get().order] = _get_datatype_size(E->get().type);
 					uniform_alignments.write[E->get().order] = _get_datatype_alignment(E->get().type);
 				}

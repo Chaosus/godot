@@ -1868,7 +1868,7 @@ Variant RasterizerStorageGLES2::material_get_param_default(RID p_material, const
 		if (material->shader->uniforms.has(p_param)) {
 			ShaderLanguage::ShaderNode::Uniform uniform = material->shader->uniforms[p_param];
 			Vector<ShaderLanguage::ConstantNode::Value> default_value = uniform.default_value;
-			return ShaderLanguage::constant_value_to_variant(default_value, uniform.type, uniform.hint);
+			return ShaderLanguage::constant_value_to_variant(default_value, uniform.type, uniform.array_size, uniform.hint);
 		}
 	}
 	return Variant();

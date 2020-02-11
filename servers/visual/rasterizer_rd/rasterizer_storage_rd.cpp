@@ -1150,7 +1150,8 @@ void RasterizerStorageRD::material_set_data_request_function(ShaderType p_shader
 	material_data_request_func[p_shader_type] = p_function;
 }
 
-_FORCE_INLINE_ static void _fill_std140_variant_ubo_value(ShaderLanguage::DataType type, const Variant &value, uint8_t *data, bool p_linear_color) {
+_FORCE_INLINE_ static void _fill_std140_variant_ubo_value(ShaderLanguage::DataType type, int array_size, const Variant &value, uint8_t *data, bool p_linear_color) {
+
 	switch (type) {
 		case ShaderLanguage::TYPE_BOOL: {
 
@@ -1187,10 +1188,17 @@ _FORCE_INLINE_ static void _fill_std140_variant_ubo_value(ShaderLanguage::DataTy
 
 		} break;
 		case ShaderLanguage::TYPE_INT: {
-
-			int v = value;
 			int32_t *gui = (int32_t *)data;
-			gui[0] = v;
+
+			if (array_size > 0) {
+				PoolIntArray iarr = value;
+				for (int i = 0; i < iarr.size(); i++) {
+					gui[i] = iarr[i];
+				}
+			} else {
+				int v = value;
+				gui[0] = v;
+			}
 
 		} break;
 		case ShaderLanguage::TYPE_IVEC2: {
@@ -1291,9 +1299,21 @@ _FORCE_INLINE_ static void _fill_std140_variant_ubo_value(ShaderLanguage::DataTy
 			}
 		} break;
 		case ShaderLanguage::TYPE_FLOAT: {
-			float v = value;
 			float *gui = (float *)data;
-			gui[0] = v;
+
+			if (array_size > 0) {
+				PoolVector<float> rarr = value;
+				int s = rarr.size();
+				for (int i = 0; i < array_size; i++) {
+					if (i < s)
+						gui[i] = rarr[i];
+					else
+						gui[i] = .0f;
+				}
+			} else {
+				float v = value;
+				gui[0] = v;
+			}
 
 		} break;
 		case ShaderLanguage::TYPE_VEC2: {
@@ -1408,7 +1428,7 @@ _FORCE_INLINE_ static void _fill_std140_variant_ubo_value(ShaderLanguage::DataTy
 	}
 }
 
-_FORCE_INLINE_ static void _fill_std140_ubo_value(ShaderLanguage::DataType type, const Vector<ShaderLanguage::ConstantNode::Value> &value, uint8_t *data) {
+_FORCE_INLINE_ static void _fill_std140_ubo_value(ShaderLanguage::DataType type, int array_size, const Vector<ShaderLanguage::ConstantNode::Value> &value, uint8_t *data) {
 
 	switch (type) {
 		case ShaderLanguage::TYPE_BOOL: {
@@ -1505,7 +1525,13 @@ _FORCE_INLINE_ static void _fill_std140_ubo_value(ShaderLanguage::DataType type,
 		case ShaderLanguage::TYPE_FLOAT: {
 
 			float *gui = (float *)data;
-			gui[0] = value[0].real;
+			if (array_size > 0) {
+				for (int i = 0; i < value.size(); i++) {
+					gui[i] = value[i].real;
+				}
+			} else {
+				gui[0] = value[0].real;
+			}
 
 		} break;
 		case ShaderLanguage::TYPE_VEC2: {
@@ -1577,7 +1603,11 @@ _FORCE_INLINE_ static void _fill_std140_ubo_value(ShaderLanguage::DataType type,
 	}
 }
 
-_FORCE_INLINE_ static void _fill_std140_ubo_empty(ShaderLanguage::DataType type, uint8_t *data) {
+_FORCE_INLINE_ static void _fill_std140_ubo_empty(ShaderLanguage::DataType type, int array_size, uint8_t *data) {
+
+	if (array_size == 0) {
+		array_size = 1;
+	}
 
 	switch (type) {
 
@@ -1585,13 +1615,13 @@ _FORCE_INLINE_ static void _fill_std140_ubo_empty(ShaderLanguage::DataType type,
 		case ShaderLanguage::TYPE_INT:
 		case ShaderLanguage::TYPE_UINT:
 		case ShaderLanguage::TYPE_FLOAT: {
-			zeromem(data, 4);
+			zeromem(data, 4 * array_size);
 		} break;
 		case ShaderLanguage::TYPE_BVEC2:
 		case ShaderLanguage::TYPE_IVEC2:
 		case ShaderLanguage::TYPE_UVEC2:
 		case ShaderLanguage::TYPE_VEC2: {
-			zeromem(data, 8);
+			zeromem(data, 8 * array_size);
 		} break;
 		case ShaderLanguage::TYPE_BVEC3:
 		case ShaderLanguage::TYPE_IVEC3:
@@ -1602,18 +1632,18 @@ _FORCE_INLINE_ static void _fill_std140_ubo_empty(ShaderLanguage::DataType type,
 		case ShaderLanguage::TYPE_UVEC4:
 		case ShaderLanguage::TYPE_VEC4: {
 
-			zeromem(data, 16);
+			zeromem(data, 16 * array_size);
 		} break;
 		case ShaderLanguage::TYPE_MAT2: {
 
-			zeromem(data, 32);
+			zeromem(data, 32 * array_size);
 		} break;
 		case ShaderLanguage::TYPE_MAT3: {
 
-			zeromem(data, 48);
+			zeromem(data, 48 * array_size);
 		} break;
 		case ShaderLanguage::TYPE_MAT4: {
-			zeromem(data, 64);
+			zeromem(data, 64 * array_size);
 		} break;
 
 		default: {
@@ -1628,10 +1658,15 @@ void RasterizerStorageRD::MaterialData::update_uniform_buffer(const Map<StringNa
 		if (E->get().order < 0)
 			continue; // texture, does not go here
 
+		int array_size = 1;
+		if (E->get().array_size > 0) {
+			array_size = E->get().array_size;
+		}
+
 		//regular uniform
 		uint32_t offset = p_uniform_offsets[E->get().order];
 #ifdef DEBUG_ENABLED
-		uint32_t size = ShaderLanguage::get_type_size(E->get().type);
+		uint32_t size = ShaderLanguage::get_type_size(E->get().type) * array_size;
 		ERR_CONTINUE(offset + size > p_buffer_size);
 #endif
 		uint8_t *data = &p_buffer[offset];
@@ -1639,20 +1674,20 @@ void RasterizerStorageRD::MaterialData::update_uniform_buffer(const Map<StringNa
 
 		if (V) {
 			//user provided
-			_fill_std140_variant_ubo_value(E->get().type, V->get(), data, p_use_linear_color);
+			_fill_std140_variant_ubo_value(E->get().type, E->get().array_size, V->get(), data, p_use_linear_color);
 
 		} else if (E->get().default_value.size()) {
 			//default value
-			_fill_std140_ubo_value(E->get().type, E->get().default_value, data);
+			_fill_std140_ubo_value(E->get().type, E->get().array_size, E->get().default_value, data);
 			//value=E->get().default_value;
 		} else {
 			//zero because it was not provided
 			if (E->get().type == ShaderLanguage::TYPE_VEC4 && E->get().hint == ShaderLanguage::ShaderNode::Uniform::HINT_COLOR) {
 				//colors must be set as black, with alpha as 1.0
-				_fill_std140_variant_ubo_value(E->get().type, Color(0, 0, 0, 1), data, p_use_linear_color);
+				_fill_std140_variant_ubo_value(E->get().type, E->get().array_size, Color(0, 0, 0, 1), data, p_use_linear_color);
 			} else {
 				//else just zero it out
-				_fill_std140_ubo_empty(E->get().type, data);
+				_fill_std140_ubo_empty(E->get().type, E->get().array_size, data);
 			}
 		}
 	}

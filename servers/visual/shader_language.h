@@ -633,6 +633,7 @@ public:
 			int texture_order;
 			DataType type;
 			DataPrecision precision;
+			int array_size;
 			Vector<ConstantNode::Value> default_value;
 			Hint hint;
 			TextureFilter filter;
@@ -644,6 +645,7 @@ public:
 					texture_order(0),
 					type(TYPE_VOID),
 					precision(PRECISION_DEFAULT),
+					array_size(0),
 					hint(HINT_NONE),
 					filter(FILTER_DEFAULT),
 					repeat(REPEAT_DEFAULT) {
@@ -717,7 +719,7 @@ public:
 	static int get_cardinality(DataType p_type);
 	static bool is_scalar_type(DataType p_type);
 	static bool is_sampler_type(DataType p_type);
-	static Variant constant_value_to_variant(const Vector<ShaderLanguage::ConstantNode::Value> &p_value, DataType p_type, ShaderLanguage::ShaderNode::Uniform::Hint p_hint = ShaderLanguage::ShaderNode::Uniform::HINT_NONE);
+	static Variant constant_value_to_variant(const Vector<ShaderLanguage::ConstantNode::Value> &p_value, DataType p_type, int p_array_size, ShaderLanguage::ShaderNode::Uniform::Hint p_hint = ShaderLanguage::ShaderNode::Uniform::HINT_NONE);
 	static PropertyInfo uniform_to_property_info(const ShaderNode::Uniform &p_uniform);
 	static uint32_t get_type_size(DataType p_type);
 
@@ -832,6 +834,8 @@ private:
 	StringName completion_struct;
 	int completion_argument;
 
+	int _get_component_amount(DataType p_datatype);
+
 	bool _get_completable_identifier(BlockNode *p_block, CompletionType p_type, StringName &identifier);
 	static const BuiltinFuncDef builtin_func_defs[];
 	static const BuiltinFuncOutArgs builtin_func_out_args[];
@@ -851,6 +855,17 @@ private:
 	Error _parse_block(BlockNode *p_block, const Map<StringName, BuiltInInfo> &p_builtin_types, bool p_just_one = false, bool p_can_break = false, bool p_can_continue = false);
 	String _get_shader_type_list(const Set<String> &p_shader_types) const;
 
+	struct ArrayInitializer {
+		DataType datatype;
+		DataPrecision precision;
+		String struct_name;
+		int size;
+		bool is_unknown_size;
+		bool is_const;
+		bool is_uniform;
+	};
+
+	Error _parse_array_constructor(ShaderLanguage::Token p_tk, BlockNode *p_block, const Map<StringName, BuiltInInfo> &p_builtin_types, const ArrayInitializer &p_array_initializer, ArrayDeclarationNode::Declaration &r_decl);
 	Error _parse_shader(const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const Set<String> &p_shader_types);
 
 	Error _find_last_flow_op_in_block(BlockNode *p_block, FlowOperation p_op);
