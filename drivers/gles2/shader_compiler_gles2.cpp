@@ -252,6 +252,12 @@ void ShaderCompilerGLES2::_dump_function_deps(SL::ShaderNode *p_node, const Stri
 			} else {
 				header += _qualstr(fnode->arguments[i].qualifier) + _prestr(fnode->arguments[i].precision) + _typestr(fnode->arguments[i].type) + " " + _mkid(fnode->arguments[i].name);
 			}
+
+			if (fnode->arguments[i].array_size > 0) {
+				header += "[";
+				header += itos(fnode->arguments[i].array_size);
+				header += "]";
+			}
 		}
 
 		header += ")\n";

@@ -349,6 +349,8 @@ public:
 
 		virtual DataType get_datatype() const { return TYPE_VOID; }
 		virtual String get_datatype_name() const { return ""; }
+		virtual int get_array_size() const { return 0; }
+		virtual bool is_use_indexing() const { return false; }
 
 		Node(Type t) :
 				type(t) {}
@@ -367,12 +369,15 @@ public:
 
 	struct OperatorNode : public Node {
 		DataType return_cache = TYPE_VOID;
+		int array_size = 0;
 		DataPrecision return_precision_cache = PRECISION_DEFAULT;
 		Operator op = OP_EQUAL;
 		StringName struct_name;
 		Vector<Node *> arguments;
-		virtual DataType get_datatype() const { return return_cache; }
-		virtual String get_datatype_name() const { return String(struct_name); }
+		virtual DataType get_datatype() const override { return return_cache; }
+		virtual String get_datatype_name() const override { return String(struct_name); }
+		virtual int get_array_size() const override { return is_use_indexing() ? 0 : array_size; }
+		virtual bool is_use_indexing() const override { return op == OP_INDEX; }
 
 		OperatorNode() :
 				Node(TYPE_OPERATOR) {}
@@ -382,8 +387,8 @@ public:
 		DataType datatype_cache = TYPE_VOID;
 		StringName name;
 		StringName struct_name;
-		virtual DataType get_datatype() const { return datatype_cache; }
-		virtual String get_datatype_name() const { return String(struct_name); }
+		virtual DataType get_datatype() const override { return datatype_cache; }
+		virtual String get_datatype_name() const override { return String(struct_name); }
 		bool is_const = false;
 
 		VariableNode() :
@@ -402,7 +407,7 @@ public:
 		};
 
 		Vector<Declaration> declarations;
-		virtual DataType get_datatype() const { return datatype; }
+		virtual DataType get_datatype() const override { return datatype; }
 
 		VariableDeclarationNode() :
 				Node(TYPE_VARIABLE_DECLARATION) {}
@@ -415,9 +420,12 @@ public:
 		Node *index_expression = nullptr;
 		Node *call_expression = nullptr;
 		bool is_const = false;
+		int array_size = 0;
 
-		virtual DataType get_datatype() const { return datatype_cache; }
-		virtual String get_datatype_name() const { return String(struct_name); }
+		virtual DataType get_datatype() const override { return datatype_cache; }
+		virtual String get_datatype_name() const override { return String(struct_name); }
+		virtual int get_array_size() const override { return is_use_indexing() ? 0 : array_size; }
+		virtual bool is_use_indexing() const override { return index_expression != nullptr; }
 
 		ArrayNode() :
 				Node(TYPE_ARRAY) {}
@@ -425,8 +433,12 @@ public:
 
 	struct ArrayConstructNode : public Node {
 		DataType datatype = TYPE_VOID;
-		String struct_name;
+		StringName struct_name;
 		Vector<Node *> initializer;
+
+		virtual DataType get_datatype() const override { return datatype; }
+		virtual String get_datatype_name() const override { return String(struct_name); }
+		virtual int get_array_size() const override { return initializer.size(); }
 
 		ArrayConstructNode() :
 				Node(TYPE_ARRAY_CONSTRUCT) {}
@@ -445,7 +457,9 @@ public:
 		};
 
 		Vector<Declaration> declarations;
-		virtual DataType get_datatype() const { return datatype; }
+		Node *call_expression = nullptr;
+		virtual DataType get_datatype() const override { return datatype; }
+		virtual int get_array_size() const override { return declarations.size(); }
 
 		ArrayDeclarationNode() :
 				Node(TYPE_ARRAY_DECLARATION) {}
@@ -465,8 +479,8 @@ public:
 
 		Vector<Value> values;
 		Vector<ArrayDeclarationNode::Declaration> array_declarations;
-		virtual DataType get_datatype() const { return datatype; }
-		virtual String get_datatype_name() const { return struct_name; }
+		virtual DataType get_datatype() const override { return datatype; }
+		virtual String get_datatype_name() const override { return struct_name; }
 
 		ConstantNode() :
 				Node(TYPE_CONSTANT) {}
@@ -488,6 +502,7 @@ public:
 
 		int block_type = BLOCK_TYPE_STANDART;
 		SubClassTag block_tag = SubClassTag::TAG_GLOBAL;
+		bool uncheck_array_arg = false;
 
 		struct Variable {
 			DataType type;
@@ -528,8 +543,8 @@ public:
 		Node *index_expression = nullptr;
 		bool has_swizzling_duplicates = false;
 
-		virtual DataType get_datatype() const { return datatype; }
-		virtual String get_datatype_name() const { return String(struct_name); }
+		virtual DataType get_datatype() const override { return datatype; }
+		virtual String get_datatype_name() const override { return String(struct_name); }
 
 		MemberNode() :
 				Node(TYPE_MEMBER) {}
@@ -547,6 +562,7 @@ public:
 			StringName name;
 			DataType type;
 			StringName type_str;
+			int array_size;
 			DataPrecision precision;
 			//for passing textures as arguments
 			bool tex_argument_check;
@@ -561,10 +577,13 @@ public:
 		StringName name;
 		DataType return_type = TYPE_VOID;
 		StringName return_struct_name;
+		int return_array_size = 0;
 		DataPrecision return_precision = PRECISION_DEFAULT;
 		Vector<Argument> arguments;
 		BlockNode *body = nullptr;
 		bool can_discard = false;
+
+		virtual int get_array_size() const override { return return_array_size; }
 
 		FunctionNode() :
 				Node(TYPE_FUNCTION) {}
@@ -836,7 +855,7 @@ private:
 	Error _validate_datatype(DataType p_type);
 	bool _compare_datatypes_in_nodes(Node *a, Node *b) const;
 
-	bool _validate_function_call(BlockNode *p_block, const Map<StringName, BuiltInInfo> &p_builtin_types, OperatorNode *p_func, DataType *r_ret_type, StringName *r_ret_type_str);
+	bool _validate_function_call(BlockNode *p_block, const Map<StringName, BuiltInInfo> &p_builtin_types, OperatorNode *p_func, DataType *r_ret_type, StringName *r_ret_type_str, int *r_ret_array_size);
 	bool _parse_function_arguments(BlockNode *p_block, const Map<StringName, BuiltInInfo> &p_builtin_types, OperatorNode *p_func, int *r_complete_arg = nullptr);
 	bool _propagate_function_call_sampler_uniform_settings(StringName p_name, int p_argument, TextureFilter p_filter, TextureRepeat p_repeat);
 	bool _propagate_function_call_sampler_builtin_reference(StringName p_name, int p_argument, const StringName &p_builtin);

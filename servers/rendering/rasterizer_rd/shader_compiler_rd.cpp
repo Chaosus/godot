@@ -391,10 +391,16 @@ void ShaderCompilerRD::_dump_function_deps(const SL::ShaderNode *p_node, const S
 
 		String header;
 		if (fnode->return_type == SL::TYPE_STRUCT) {
-			header = _mkid(fnode->return_struct_name) + " " + _mkid(fnode->name) + "(";
+			header = _mkid(fnode->return_struct_name);
 		} else {
-			header = _typestr(fnode->return_type) + " " + _mkid(fnode->name) + "(";
+			header = _typestr(fnode->return_type);
 		}
+		if (fnode->get_array_size() > 0) {
+			header += "[";
+			header += itos(fnode->get_array_size());
+			header += "]";
+		}
+		header += " " + _mkid(fnode->name) + "(";
 		for (int i = 0; i < fnode->arguments.size(); i++) {
 			if (i > 0) {
 				header += ", ";
@@ -403,6 +409,12 @@ void ShaderCompilerRD::_dump_function_deps(const SL::ShaderNode *p_node, const S
 				header += _qualstr(fnode->arguments[i].qualifier) + _mkid(fnode->arguments[i].type_str) + " " + _mkid(fnode->arguments[i].name);
 			} else {
 				header += _qualstr(fnode->arguments[i].qualifier) + _prestr(fnode->arguments[i].precision) + _typestr(fnode->arguments[i].type) + " " + _mkid(fnode->arguments[i].name);
+			}
+
+			if (fnode->arguments[i].array_size > 0) {
+				header += "[";
+				header += itos(fnode->arguments[i].array_size);
+				header += "]";
 			}
 		}
 
@@ -922,22 +934,26 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 				int sz = adnode->declarations[i].initializer.size();
 				if (sz > 0) {
 					declaration += "=";
-					if (adnode->datatype == SL::TYPE_STRUCT) {
-						declaration += _mkid(adnode->struct_name);
+					if (adnode->call_expression != nullptr) {
+						declaration += _dump_node_code(adnode->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 					} else {
-						declaration += _typestr(adnode->datatype);
-					}
-					declaration += "[";
-					declaration += itos(sz);
-					declaration += "]";
-					declaration += "(";
-					for (int j = 0; j < sz; j++) {
-						declaration += _dump_node_code(adnode->declarations[i].initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
-						if (j != sz - 1) {
-							declaration += ", ";
+						if (adnode->datatype == SL::TYPE_STRUCT) {
+							declaration += _mkid(adnode->struct_name);
+						} else {
+							declaration += _typestr(adnode->datatype);
 						}
+						declaration += "[";
+						declaration += itos(sz);
+						declaration += "]";
+						declaration += "(";
+						for (int j = 0; j < sz; j++) {
+							declaration += _dump_node_code(adnode->declarations[i].initializer[j], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+							if (j != sz - 1) {
+								declaration += ", ";
+							}
+						}
+						declaration += ")";
 					}
-					declaration += ")";
 				}
 			}
 
