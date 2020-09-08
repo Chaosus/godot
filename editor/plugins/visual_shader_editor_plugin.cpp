@@ -93,6 +93,7 @@ void VisualShaderEditor::edit(VisualShader *p_visual_shader) {
 			edit_type = edit_type_standart;
 			particles_mode = false;
 		}
+		visual_shader->set_type(get_current_shader_type());
 	} else {
 		if (visual_shader.is_valid()) {
 			if (visual_shader->is_connected("changed", callable_mp(this, &VisualShaderEditor::_update_preview))) {
@@ -109,8 +110,8 @@ void VisualShaderEditor::edit(VisualShader *p_visual_shader) {
 			_clear_buffer();
 			_update_options_menu();
 			_update_preview();
+			_update_graph();
 		}
-		_update_graph();
 	}
 }
 
@@ -540,6 +541,7 @@ void VisualShaderEditor::_update_graph() {
 		String expression = "";
 
 		GraphNode *node = memnew(GraphNode);
+		visual_shader->set_node_editor_link(type, nodes[n_i], node);
 
 		if (is_group) {
 			size = group_node->get_size();
@@ -584,8 +586,8 @@ void VisualShaderEditor::_update_graph() {
 			LineEdit *uniform_name = memnew(LineEdit);
 			uniform_name->set_text(uniform->get_uniform_name());
 			node->add_child(uniform_name);
-			uniform_name->connect("text_entered", callable_mp(this, &VisualShaderEditor::_line_edit_changed), varray(uniform_name, nodes[n_i]));
-			uniform_name->connect("focus_exited", callable_mp(this, &VisualShaderEditor::_line_edit_focus_out), varray(uniform_name, nodes[n_i]));
+			uniform_name->connect("text_entered", callable_mp(this, &VisualShaderEditor::_uniform_line_edit_changed), varray(nodes[n_i]));
+			uniform_name->connect("focus_exited", callable_mp(this, &VisualShaderEditor::_uniform_line_edit_focus_out), varray(uniform_name, nodes[n_i]));
 
 			String error = vsnode->get_warning(visual_shader->get_mode(), type);
 			if (error != String()) {
@@ -1214,7 +1216,7 @@ void VisualShaderEditor::_preview_select_port(int p_node, int p_port) {
 	undo_redo->commit_action();
 }
 
-void VisualShaderEditor::_line_edit_changed(const String &p_text, Object *line_edit, int p_node_id) {
+void VisualShaderEditor::_uniform_line_edit_changed(const String &p_text, int p_node_id) {
 	VisualShader::Type type = get_current_shader_type();
 
 	Ref<VisualShaderNodeUniform> node = visual_shader->get_node(type, p_node_id);
@@ -1222,21 +1224,17 @@ void VisualShaderEditor::_line_edit_changed(const String &p_text, Object *line_e
 
 	String validated_name = visual_shader->validate_uniform_name(p_text, node);
 
-	updating = true;
 	undo_redo->create_action(TTR("Set Uniform Name"));
 	undo_redo->add_do_method(node.ptr(), "set_uniform_name", validated_name);
 	undo_redo->add_undo_method(node.ptr(), "set_uniform_name", node->get_uniform_name());
-	undo_redo->add_do_method(this, "_update_graph");
-	undo_redo->add_undo_method(this, "_update_graph");
+	undo_redo->add_do_method(visual_shader.ptr(), "set_node_name", type, p_node_id, validated_name);
+	undo_redo->add_undo_method(visual_shader.ptr(), "set_node_name", type, p_node_id, node->get_uniform_name());
 	undo_redo->commit_action();
-	updating = false;
-
-	Object::cast_to<LineEdit>(line_edit)->set_text(validated_name);
 }
 
-void VisualShaderEditor::_line_edit_focus_out(Object *line_edit, int p_node_id) {
+void VisualShaderEditor::_uniform_line_edit_focus_out(Object *line_edit, int p_node_id) {
 	String text = Object::cast_to<LineEdit>(line_edit)->get_text();
-	_line_edit_changed(text, line_edit, p_node_id);
+	_uniform_line_edit_changed(text, p_node_id);
 }
 
 void VisualShaderEditor::_port_name_focus_out(Object *line_edit, int p_node_id, int p_port_id, bool p_output) {
@@ -1518,14 +1516,10 @@ VisualShaderNode *VisualShaderEditor::_add_node(int p_idx, int p_op_idx) {
 void VisualShaderEditor::_node_dragged(const Vector2 &p_from, const Vector2 &p_to, int p_node) {
 	VisualShader::Type type = get_current_shader_type();
 
-	updating = true;
 	undo_redo->create_action(TTR("Node Moved"));
 	undo_redo->add_do_method(visual_shader.ptr(), "set_node_position", type, p_node, p_to);
 	undo_redo->add_undo_method(visual_shader.ptr(), "set_node_position", type, p_node, p_from);
-	undo_redo->add_do_method(this, "_update_graph");
-	undo_redo->add_undo_method(this, "_update_graph");
 	undo_redo->commit_action();
-	updating = false;
 }
 
 void VisualShaderEditor::_connection_request(const String &p_from, int p_from_index, const String &p_to, int p_to_index) {
@@ -1621,8 +1615,6 @@ void VisualShaderEditor::_delete_request(int which) {
 		}
 	}
 
-	undo_redo->add_do_method(this, "_update_graph");
-	undo_redo->add_undo_method(this, "_update_graph");
 	undo_redo->commit_action();
 }
 
@@ -2055,6 +2047,7 @@ void VisualShaderEditor::_delete_nodes() {
 }
 
 void VisualShaderEditor::_mode_selected(int p_id) {
+	visual_shader->set_type(VisualShader::Type(p_id));
 	_update_options_menu();
 	_update_graph();
 }

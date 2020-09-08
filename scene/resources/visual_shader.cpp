@@ -325,6 +325,10 @@ String VisualShader::get_version() const {
 	return version;
 }
 
+void VisualShader::set_type(Type p_type) {
+	current_type = p_type;
+}
+
 void VisualShader::update_version(const String &p_new_version) {
 	if (version == "") {
 		for (int i = 0; i < TYPE_MAX; i++) {
@@ -395,11 +399,35 @@ void VisualShader::add_node(Type p_type, const Ref<VisualShaderNode> &p_node, co
 	_queue_update();
 }
 
+void VisualShader::set_node_editor_link(Type p_type, int p_id, GraphNode *p_graph_node) {
+	ERR_FAIL_INDEX(p_type, TYPE_MAX);
+	Graph *g = &graph[p_type];
+	ERR_FAIL_COND(!g->nodes.has(p_id));
+	g->nodes[p_id].graph_node = p_graph_node;
+}
+
+void VisualShader::set_node_name(Type p_type, int p_id, const String &p_name) {
+	ERR_FAIL_INDEX(p_type, TYPE_MAX);
+	Graph *g = &graph[p_type];
+	ERR_FAIL_COND(!g->nodes.has(p_id));
+	if (current_type == p_type) {
+		if (g->nodes[p_id].graph_node != nullptr) {
+			LineEdit *line_edit = Object::cast_to<LineEdit>(g->nodes[p_id].graph_node->get_child(0));
+			line_edit->set_text(p_name);
+		}
+	}
+}
+
 void VisualShader::set_node_position(Type p_type, int p_id, const Vector2 &p_position) {
 	ERR_FAIL_INDEX(p_type, TYPE_MAX);
 	Graph *g = &graph[p_type];
 	ERR_FAIL_COND(!g->nodes.has(p_id));
 	g->nodes[p_id].position = p_position;
+	if (current_type == p_type) {
+		if (g->nodes[p_id].graph_node != nullptr) {
+			g->nodes[p_id].graph_node->set_offset(p_position);
+		}
+	}
 }
 
 Vector2 VisualShader::get_node_position(Type p_type, int p_id) const {
@@ -456,6 +484,11 @@ void VisualShader::remove_node(Type p_type, int p_id) {
 	}
 
 	g->nodes[p_id].node->disconnect("changed", callable_mp(this, &VisualShader::_queue_update));
+
+	if (g->nodes[p_id].graph_node != nullptr) {
+		g->nodes[p_id].graph_node->get_parent()->remove_child(g->nodes[p_id].graph_node);
+		g->nodes[p_id].graph_node = nullptr;
+	}
 
 	g->nodes.erase(p_id);
 
@@ -1585,6 +1618,8 @@ void VisualShader::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_node_position", "type", "id", "position"), &VisualShader::set_node_position);
 	ClassDB::bind_method(D_METHOD("get_node_position", "type", "id"), &VisualShader::get_node_position);
+
+	ClassDB::bind_method(D_METHOD("set_node_name", "type", "id", "name"), &VisualShader::set_node_name);
 
 	ClassDB::bind_method(D_METHOD("get_node_list", "type"), &VisualShader::get_node_list);
 	ClassDB::bind_method(D_METHOD("get_valid_node_id", "type"), &VisualShader::get_valid_node_id);

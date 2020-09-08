@@ -33,6 +33,7 @@
 
 #include "core/string_builder.h"
 #include "scene/gui/control.h"
+#include "scene/gui/graph_edit.h"
 #include "scene/resources/shader.h"
 
 class VisualShaderNodeUniform;
@@ -69,10 +70,14 @@ public:
 	};
 
 private:
+
+	Type current_type;
+
 	struct Node {
 		Ref<VisualShaderNode> node;
 		Vector2 position;
 		List<int> prev_connected_nodes;
+		GraphNode *graph_node = nullptr;
 	};
 
 	struct Graph {
@@ -137,9 +142,13 @@ public:
 
 	void add_node(Type p_type, const Ref<VisualShaderNode> &p_node, const Vector2 &p_position, int p_id);
 	void set_node_position(Type p_type, int p_id, const Vector2 &p_position);
+	void set_node_editor_link(Type p_type, int p_id, GraphNode* p_graph_node); // internal method
+	void set_node_name(Type p_type, int p_id, const String &p_name);
 
 	Vector2 get_node_position(Type p_type, int p_id) const;
 	Ref<VisualShaderNode> get_node(Type p_type, int p_id) const;
+
+	void set_type(Type p_type); // internal method
 
 	Vector<int> get_node_list(Type p_type) const;
 	int get_valid_node_id(Type p_type) const;
