@@ -43,6 +43,7 @@
 #include "scene/gui/menu_button.h"
 #include "scene/gui/panel.h"
 #include "scene/main/window.h"
+#include "scene/resources/visual_particles_nodes.h"
 #include "scene/resources/visual_shader_nodes.h"
 #include "servers/display_server.h"
 #include "servers/rendering/shader_types.h"
@@ -172,8 +173,9 @@ void VisualShaderGraphPlugin::update_property_editor(VisualShader::Type p_type, 
 		Ref<VisualShaderNodeColorUniform> color_uniform = vsnode;
 		Ref<VisualShaderNodeBooleanUniform> bool_uniform = vsnode;
 		Ref<VisualShaderNodeTransformUniform> transform_uniform = vsnode;
+		Ref<VisualShaderNodeEmission> emission = vsnode;
 
-		if (float_uniform.is_valid() || int_uniform.is_valid() || vec3_uniform.is_valid() || color_uniform.is_valid() || bool_uniform.is_valid() || transform_uniform.is_valid()) {
+		if (emission.is_valid() || float_uniform.is_valid() || int_uniform.is_valid() || vec3_uniform.is_valid() || color_uniform.is_valid() || bool_uniform.is_valid() || transform_uniform.is_valid()) {
 			custom_editor->call_deferred("_show_prop_names", true);
 		}
 	}
@@ -271,13 +273,14 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 
 	static Ref<StyleBoxEmpty> label_style = make_empty_stylebox(2, 1, 2, 1);
 
-	static const Color type_color[6] = {
+	static const Color type_color[7] = {
 		Color(0.38, 0.85, 0.96), // scalar (float)
 		Color(0.49, 0.78, 0.94), // scalar (int)
 		Color(0.84, 0.49, 0.93), // vector
 		Color(0.55, 0.65, 0.94), // boolean
 		Color(0.96, 0.66, 0.43), // transform
 		Color(1.0, 1.0, 0.0), // sampler
+		Color(1.0, 1.0, 1.0), // stage
 	};
 
 	Ref<VisualShaderNode> vsnode = visual_shader->get_node(p_type, p_id);
@@ -333,6 +336,8 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 	Ref<VisualShaderNodeColorUniform> color_uniform = vsnode;
 	Ref<VisualShaderNodeBooleanUniform> bool_uniform = vsnode;
 	Ref<VisualShaderNodeTransformUniform> transform_uniform = vsnode;
+	Ref<VisualShaderNodeEmission> emission = vsnode;
+
 	if (uniform.is_valid()) {
 		VisualShaderEditor::get_singleton()->graph->add_child(node);
 		VisualShaderEditor::get_singleton()->_update_created_node(node);
@@ -376,14 +381,14 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id) {
 		}
 	}
 
-	if (custom_editor && !float_uniform.is_valid() && !int_uniform.is_valid() && !vec3_uniform.is_valid() && !bool_uniform.is_valid() && !transform_uniform.is_valid() && vsnode->get_output_port_count() > 0 && vsnode->get_output_port_name(0) == "" && (vsnode->get_input_port_count() == 0 || vsnode->get_input_port_name(0) == "")) {
+	if (custom_editor && !emission.is_valid() && !float_uniform.is_valid() && !int_uniform.is_valid() && !vec3_uniform.is_valid() && !bool_uniform.is_valid() && !transform_uniform.is_valid() && vsnode->get_output_port_count() > 0 && vsnode->get_output_port_name(0) == "" && (vsnode->get_input_port_count() == 0 || vsnode->get_input_port_name(0) == "")) {
 		//will be embedded in first port
 	} else if (custom_editor) {
 		register_editor_pos(p_id, port_offset);
 		port_offset++;
 		node->add_child(custom_editor);
 		register_custom_editor(p_id, custom_editor);
-		if (color_uniform.is_valid()) {
+		if (color_uniform.is_valid() || emission.is_valid()) {
 			custom_editor->call_deferred("_show_prop_names", true);
 		}
 		if (float_uniform.is_valid() || int_uniform.is_valid() || vec3_uniform.is_valid() || bool_uniform.is_valid() || transform_uniform.is_valid()) {
@@ -2658,6 +2663,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	graph->add_valid_right_disconnect_type(VisualShaderNode::PORT_TYPE_VECTOR);
 	graph->add_valid_right_disconnect_type(VisualShaderNode::PORT_TYPE_TRANSFORM);
 	graph->add_valid_right_disconnect_type(VisualShaderNode::PORT_TYPE_SAMPLER);
+	graph->add_valid_right_disconnect_type(VisualShaderNode::PORT_TYPE_STAGE);
 	//graph->add_valid_left_disconnect_type(0);
 	graph->set_v_size_flags(SIZE_EXPAND_FILL);
 	graph->connect("connection_request", callable_mp(this, &VisualShaderEditor::_connection_request), varray(), CONNECT_DEFERRED);
@@ -2689,6 +2695,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	graph->add_valid_connection_type(VisualShaderNode::PORT_TYPE_BOOLEAN, VisualShaderNode::PORT_TYPE_BOOLEAN);
 	graph->add_valid_connection_type(VisualShaderNode::PORT_TYPE_TRANSFORM, VisualShaderNode::PORT_TYPE_TRANSFORM);
 	graph->add_valid_connection_type(VisualShaderNode::PORT_TYPE_SAMPLER, VisualShaderNode::PORT_TYPE_SAMPLER);
+	graph->add_valid_connection_type(VisualShaderNode::PORT_TYPE_STAGE, VisualShaderNode::PORT_TYPE_STAGE);
 
 	VSeparator *vs = memnew(VSeparator);
 	graph->get_zoom_hbox()->add_child(vs);
@@ -3073,6 +3080,9 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("ScreenUV", "Input", "Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "screen_uv"), "screen_uv", VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_FRAGMENT, Shader::MODE_SKY));
 	add_options.push_back(AddOption("SkyCoords", "Input", "Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "sky_coords"), "sky_coords", VisualShaderNode::PORT_TYPE_VECTOR, TYPE_FLAGS_FRAGMENT, Shader::MODE_SKY));
 	add_options.push_back(AddOption("Time", "Input", "Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "time"), "time", VisualShaderNode::PORT_TYPE_SCALAR, TYPE_FLAGS_FRAGMENT, Shader::MODE_SKY));
+
+	// PARTICLES
+	add_options.push_back(AddOption("Emission", "Particles", "", "VisualShaderNodeEmission", TTR("Emission function."), -1, -1, TYPE_FLAGS_EMIT, Shader::MODE_PARTICLES));
 
 	// SCALAR
 

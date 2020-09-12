@@ -169,7 +169,7 @@
 #include "scene/resources/texture.h"
 #include "scene/resources/tile_set.h"
 #include "scene/resources/video_stream.h"
-#include "scene/resources/visual_shader.h"
+#include "scene/resources/visual_particles_nodes.h"
 #include "scene/resources/visual_shader_nodes.h"
 #include "scene/resources/world_2d.h"
 #include "scene/resources/world_3d.h"
@@ -579,6 +579,8 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeIs>();
 	ClassDB::register_class<VisualShaderNodeCompare>();
 	ClassDB::register_class<VisualShaderNodeMultiplyAdd>();
+
+	ClassDB::register_class<VisualShaderNodeEmission>();
 
 	ClassDB::register_class<ShaderMaterial>();
 	ClassDB::register_virtual_class<CanvasItem>();
