@@ -224,11 +224,15 @@
 		</constant>
 		<constant name="TYPE_EMIT" value="3" enum="Type">
 		</constant>
+		<constant name="TYPE_EMIT_CUSTOM" value="6" enum="Type">
+		</constant>
 		<constant name="TYPE_PROCESS" value="4" enum="Type">
 		</constant>
-		<constant name="TYPE_END" value="5" enum="Type">
+		<constant name="TYPE_PROCESS_CUSTOM" value="7" enum="Type">
 		</constant>
-		<constant name="TYPE_MAX" value="6" enum="Type">
+		<constant name="TYPE_COLLIDE" value="5" enum="Type">
+		</constant>
+		<constant name="TYPE_MAX" value="8" enum="Type">
 			Represents the size of the [enum Type] enum.
 		</constant>
 		<constant name="NODE_ID_INVALID" value="-1">
