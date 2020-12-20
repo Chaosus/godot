@@ -361,6 +361,8 @@ class VisualShaderEditor : public VBoxContainer {
 	void _change_output_port_type(int p_type, int p_node, int p_port);
 	void _change_output_port_name(const String &p_text, Object *p_line_edit, int p_node, int p_port);
 
+	void _expand_output_port(int p_node, int p_port, bool p_expanded);
+
 	void _expression_focus_out(Object *code_edit, int p_node);
 
 	void _set_node_size(int p_type, int p_node, const Size2 &p_size);

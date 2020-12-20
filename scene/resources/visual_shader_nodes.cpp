@@ -237,6 +237,13 @@ String VisualShaderNodeColorConstant::get_output_port_name(int p_port) const {
 	return p_port == 0 ? "" : "alpha"; //no output port means the editor will be used as port
 }
 
+bool VisualShaderNodeColorConstant::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
+}
+
 String VisualShaderNodeColorConstant::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
 	String code;
 	code += "\t" + p_output_vars[0] + " = " + vformat("vec3(%.6f, %.6f, %.6f)", constant.r, constant.g, constant.b) + ";\n";
@@ -4363,6 +4370,13 @@ String VisualShaderNodeTextureUniform::generate_global(Shader::Mode p_mode, Visu
 
 bool VisualShaderNodeTextureUniform::is_code_generated() const {
 	return is_output_port_connected(0) || is_output_port_connected(1); // rgb or alpha
+}
+
+bool VisualShaderNodeTextureUniform::is_output_port_expandable(int p_port) const {
+	if (p_port == 0) {
+		return true;
+	}
+	return false;
 }
 
 String VisualShaderNodeTextureUniform::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
