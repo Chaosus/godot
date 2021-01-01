@@ -33,6 +33,8 @@
 #include "core/string/print_string.h"
 #include "servers/rendering_server.h"
 
+#define HAS_WARNING(flag) (warning_flags & flag)
+
 static bool _is_text_char(char32_t c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
@@ -901,6 +903,8 @@ bool ShaderLanguage::is_token_nonvoid_datatype(TokenType p_type) {
 
 void ShaderLanguage::clear() {
 	current_function = StringName();
+	last_name = StringName();
+	last_type = IDENTIFIER_MAX;
 
 	completion_type = COMPLETION_NONE;
 	completion_block = nullptr;
@@ -908,18 +912,55 @@ void ShaderLanguage::clear() {
 	completion_class = SubClassTag::TAG_GLOBAL;
 	completion_struct = StringName();
 
+#ifdef DEBUG_ENABLED
+	used_constants.clear();
+	used_varyings.clear();
+	used_uniforms.clear();
+	used_functions.clear();
+	used_structs.clear();
+	warnings.clear();
+#endif // DEBUG_ENABLED
+
 	error_line = 0;
 	tk_line = 1;
 	char_idx = 0;
 	error_set = false;
 	error_str = "";
-	last_const = false;
 	while (nodes) {
 		Node *n = nodes;
 		nodes = nodes->next;
 		memdelete(n);
 	}
 }
+
+#ifdef DEBUG_ENABLED
+void ShaderLanguage::_parse_used_identifier(const StringName &p_identifier, IdentifierType p_type) {
+	switch (p_type) {
+		case IdentifierType::IDENTIFIER_CONSTANT:
+			if (HAS_WARNING(ShaderWarning::UNUSED_CONSTANT_FLAG) && used_constants.has(p_identifier)) {
+				used_constants[p_identifier].used = true;
+			}
+			break;
+		case IdentifierType::IDENTIFIER_VARYING:
+			if (HAS_WARNING(ShaderWarning::UNUSED_VARYING_FLAG) && used_varyings.has(p_identifier)) {
+				used_varyings[p_identifier].used = true;
+			}
+			break;
+		case IdentifierType::IDENTIFIER_UNIFORM:
+			if (HAS_WARNING(ShaderWarning::UNUSED_UNIFORM_FLAG) && used_uniforms.has(p_identifier)) {
+				used_uniforms[p_identifier].used = true;
+			}
+			break;
+		case IdentifierType::IDENTIFIER_FUNCTION:
+			if (HAS_WARNING(ShaderWarning::UNUSED_FUNCTION_FLAG) && used_functions.has(p_identifier)) {
+				used_functions[p_identifier].used = true;
+			}
+			break;
+		default:
+			break;
+	}
+}
+#endif // DEBUG_ENABLED
 
 bool ShaderLanguage::_find_identifier(const BlockNode *p_block, bool p_allow_reassign, const FunctionInfo &p_function_info, const StringName &p_identifier, DataType *r_data_type, IdentifierType *r_type, bool *r_is_const, int *r_array_size, StringName *r_struct_name, ConstantNode::Value *r_constant_value) {
 	if (p_function_info.built_ins.has(p_identifier)) {
@@ -3506,6 +3547,11 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 
 			if (shader->structs.has(identifier)) {
 				pstruct = shader->structs[identifier].shader_struct;
+#ifdef DEBUG_ENABLED
+				if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_STRUCT_FLAG) && used_structs.has(identifier)) {
+					used_structs[identifier].used = true;
+				}
+#endif // DEBUG_ENABLED
 				struct_init = true;
 			}
 
@@ -3729,11 +3775,17 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 						}
 					}
 					expr = func;
+#ifdef DEBUG_ENABLED
+					if (check_warnings) {
+						_parse_used_identifier(name, IdentifierType::IDENTIFIER_FUNCTION);
+					}
+#endif // DEBUG_ENABLED
 				}
 			} else {
 				//an identifier
 
-				last_const = false;
+				last_name = identifier;
+				last_type = IDENTIFIER_MAX;
 				_set_tkpos(pos);
 
 				DataType data_type;
@@ -3761,11 +3813,14 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 						_set_error("Unknown identifier in expression: " + String(identifier));
 						return nullptr;
 					}
-					last_const = is_const;
-
 					if (ident_type == IDENTIFIER_FUNCTION) {
 						_set_error("Can't use function as identifier: " + String(identifier));
 						return nullptr;
+					}
+					if (is_const) {
+						last_type = IDENTIFIER_CONSTANT;
+					} else {
+						last_type = ident_type;
 					}
 				}
 
@@ -3786,7 +3841,7 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 							_set_error("Constants cannot be modified.");
 							return nullptr;
 						}
-						if (shader->varyings.has(identifier) && current_function != String("vertex")) {
+						if (last_type == IDENTIFIER_VARYING && current_function != String("vertex")) {
 							_set_error("Varyings can only be assigned in vertex function.");
 							return nullptr;
 						}
@@ -3844,7 +3899,6 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 					arrname->assign_expression = assign_expression;
 					arrname->is_const = is_const;
 					expr = arrname;
-
 				} else {
 					VariableNode *varname = alloc_node<VariableNode>();
 					varname->name = identifier;
@@ -3853,6 +3907,11 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 					varname->struct_name = struct_name;
 					expr = varname;
 				}
+#ifdef DEBUG_ENABLED
+				if (check_warnings) {
+					_parse_used_identifier(identifier, ident_type);
+				}
+#endif // DEBUG_ENABLED
 			}
 		} else if (tk.type == TK_OP_ADD) {
 			continue; //this one does nothing
@@ -4183,8 +4242,7 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 				if (array_size > 0) {
 					tk = _get_token();
 					if (tk.type == TK_OP_ASSIGN) {
-						if (last_const) {
-							last_const = false;
+						if (last_type == IDENTIFIER_CONSTANT) {
 							_set_error("Constants cannot be modified.");
 							return nullptr;
 						}
@@ -4534,9 +4592,10 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 
 			bool unary = false;
 			bool ternary = false;
+			Operator op = expression[i].op;
 
 			int priority;
-			switch (expression[i].op) {
+			switch (op) {
 				case OP_EQUAL:
 					priority = 8;
 					break;
@@ -4656,6 +4715,12 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 				default:
 					ERR_FAIL_V(nullptr); //unexpected operator
 			}
+
+#if DEBUG_ENABLED
+			if (check_warnings && HAS_WARNING(ShaderWarning::FLOAT_COMPARISON_FLAG) && (op == OP_EQUAL || op == OP_NOT_EQUAL) && expression[i - 1].node->get_datatype() == TYPE_FLOAT && expression[i + 1].node->get_datatype() == TYPE_FLOAT) {
+				_add_line_warning(ShaderWarning::FLOAT_COMPARISON);
+			}
+#endif // DEBUG_ENABLED
 
 			if (priority < min_priority) {
 				// < is used for left to right (default)
@@ -5365,7 +5430,6 @@ Error ShaderLanguage::_parse_block(BlockNode *p_block, const FunctionInfo &p_fun
 				p_block->statements.push_back(vardecl);
 
 				p_block->variables[name] = var;
-
 				if (tk.type == TK_COMMA) {
 					if (p_block->block_type == BlockNode::BLOCK_TYPE_FOR) {
 						_set_error("Multiple declarations in 'for' loop are not implemented yet.");
@@ -6188,7 +6252,11 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				}
 				shader->structs[st.name] = st;
 				shader->vstructs.push_back(st); // struct's order is important!
-
+#ifdef DEBUG_ENABLED
+				if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_STRUCT_FLAG)) {
+					used_structs.insert(st.name, Usage(tk_line));
+				}
+#endif // DEBUG_ENABLED
 			} break;
 			case TK_GLOBAL: {
 				tk = _get_token();
@@ -6534,6 +6602,12 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					}
 
 					shader->uniforms[name] = uniform2;
+#ifdef DEBUG_ENABLED
+					if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_UNIFORM_FLAG)) {
+						used_uniforms.insert(name, Usage(tk_line));
+					}
+#endif // DEBUG_ENABLED
+
 					//reset scope for next uniform
 					uniform_scope = ShaderNode::Uniform::SCOPE_LOCAL;
 
@@ -6576,6 +6650,11 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					}
 
 					shader->varyings[name] = varying;
+#ifdef DEBUG_ENABLED
+					if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_VARYING_FLAG)) {
+						used_varyings.insert(name, Usage(tk_line));
+					}
+#endif // DEBUG_ENABLED
 				}
 
 			} break;
@@ -6915,6 +6994,11 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 
 						shader->constants[name] = constant;
 						shader->vconstants.push_back(constant);
+#ifdef DEBUG_ENABLED
+						if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_CONSTANT_FLAG)) {
+							used_constants.insert(name, Usage(tk_line));
+						}
+#endif // DEBUG_ENABLED
 
 						if (tk.type == TK_COMMA) {
 							tk = _get_token();
@@ -6976,6 +7060,12 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 
 				if (p_functions.has(name)) {
 					func_node->can_discard = p_functions[name].can_discard;
+				} else {
+#ifdef DEBUG_ENABLED
+					if (check_warnings && HAS_WARNING(ShaderWarning::UNUSED_FUNCTION_FLAG)) {
+						used_functions.insert(name, Usage(tk_line));
+					}
+#endif // DEBUG_ENABLED
 				}
 
 				func_node->body = alloc_node<BlockNode>();
@@ -7315,6 +7405,33 @@ String ShaderLanguage::get_shader_type(const String &p_code) {
 	return String();
 }
 
+#ifdef DEBUG_ENABLED
+void ShaderLanguage::_check_warning_accums() {
+	for (Map<ShaderWarning::Code, Map<StringName, Usage> *>::Element *E = warnings_check_map.front(); E; E = E->next()) {
+		for (const Map<StringName, Usage>::Element *U = (*E->get()).front(); U; U = U->next()) {
+			if (!U->get().used) {
+				_add_warning(E->key(), U->get().decl_line, U->key());
+			}
+		}
+	}
+}
+List<ShaderWarning>::Element *ShaderLanguage::get_warnings_ptr() {
+	return warnings.front();
+}
+void ShaderLanguage::enable_warning_checking(bool p_enabled) {
+	check_warnings = p_enabled;
+}
+bool ShaderLanguage::is_warning_checking_enabled() const {
+	return check_warnings;
+}
+void ShaderLanguage::set_warning_flags(uint32_t p_flags) {
+	warning_flags = p_flags;
+}
+uint32_t ShaderLanguage::get_warning_flags() const {
+	return warning_flags;
+}
+#endif // DEBUG_ENABLED
+
 Error ShaderLanguage::compile(const String &p_code, const Map<StringName, FunctionInfo> &p_functions, const Vector<StringName> &p_render_modes, const Set<String> &p_shader_types, GlobalVariableGetTypeFunc p_global_variable_type_func) {
 	clear();
 
@@ -7325,6 +7442,12 @@ Error ShaderLanguage::compile(const String &p_code, const Map<StringName, Functi
 
 	shader = alloc_node<ShaderNode>();
 	Error err = _parse_shader(p_functions, p_render_modes, p_shader_types);
+
+#ifdef DEBUG_ENABLED
+	if (check_warnings) {
+		_check_warning_accums();
+	}
+#endif // DEBUG_ENABLED
 
 	if (err != OK) {
 		return err;
@@ -7734,6 +7857,14 @@ ShaderLanguage::ShaderNode *ShaderLanguage::get_shader() {
 ShaderLanguage::ShaderLanguage() {
 	nodes = nullptr;
 	completion_class = TAG_GLOBAL;
+
+#if DEBUG_ENABLED
+	warnings_check_map.insert(ShaderWarning::UNUSED_CONSTANT, &used_constants);
+	warnings_check_map.insert(ShaderWarning::UNUSED_FUNCTION, &used_functions);
+	warnings_check_map.insert(ShaderWarning::UNUSED_STRUCT, &used_structs);
+	warnings_check_map.insert(ShaderWarning::UNUSED_UNIFORM, &used_uniforms);
+	warnings_check_map.insert(ShaderWarning::UNUSED_VARYING, &used_varyings);
+#endif // DEBUG_ENABLED
 }
 
 ShaderLanguage::~ShaderLanguage() {
