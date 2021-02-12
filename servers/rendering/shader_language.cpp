@@ -3110,6 +3110,10 @@ bool ShaderLanguage::_validate_varying_assign(ShaderNode::Varying &p_varying, St
 	switch (p_varying.stage) {
 		case ShaderNode::Varying::STAGE_UNKNOWN: // first assign
 			if (current_function == String("vertex")) {
+				if (p_varying.type < TYPE_FLOAT) {
+					_set_error("Invalid type for varying assigned in 'vertex' function, only float,vec2,vec3,vec4,mat2,mat3,mat4 or array of these types allowed.");
+					return false;
+				}
 				p_varying.stage = ShaderNode::Varying::STAGE_VERTEX;
 			} else if (current_function == String("fragment")) {
 				p_varying.stage = ShaderNode::Varying::STAGE_FRAGMENT;
@@ -6314,8 +6318,8 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					return ERR_PARSE_ERROR;
 				}
 
-				if (!uniform && (type < TYPE_FLOAT || type > TYPE_MAT4)) {
-					_set_error("Invalid type for varying, only float,vec2,vec3,vec4,mat2,mat3,mat4 or array of these types allowed.");
+				if (!uniform && type > TYPE_MAT4) {
+					_set_error("Invalid type for varying.");
 					return ERR_PARSE_ERROR;
 				}
 
