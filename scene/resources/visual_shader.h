@@ -82,6 +82,14 @@ private:
 	struct Graph {
 		Map<int, Node> nodes;
 		List<Connection> connections;
+
+		struct OutputGroup {
+			Set<int> ports;
+			String name;
+			bool expanded;
+		};
+
+		Vector<OutputGroup> groups;
 	} graph[TYPE_MAX];
 
 	Shader::Mode shader_mode = Shader::MODE_SPATIAL;
@@ -167,6 +175,14 @@ public:
 	void connect_nodes_forced(Type p_type, int p_from_node, int p_from_port, int p_to_node, int p_to_port);
 	bool is_port_types_compatible(int p_a, int p_b) const;
 
+	Set<int> get_group_ports(Type p_type, int p_group) const;
+	String get_group_name(Type p_type, int p_group) const;
+	bool is_group_expanded(Type p_type, int p_group) const;
+	void set_group_expanded(Type p_type, int p_group, bool p_expand = true);
+
+	void set_expanded_groups(const Array &p_values);
+	Array get_expanded_groups() const;
+
 	void rebuild();
 	void get_node_connections(Type p_type, List<Connection> *r_connections) const;
 
@@ -230,6 +246,7 @@ public:
 	Variant get_input_port_default_value(int p_port) const; // if NIL (default if node does not set anything) is returned, it means no default value is wanted if disconnected, thus no input var must be supplied (empty string will be supplied)
 	Array get_default_input_values() const;
 	virtual void set_default_input_values(const Array &p_values);
+	bool is_any_input_port_connected() const;
 
 	virtual int get_output_port_count() const = 0;
 	virtual PortType get_output_port_type(int p_port) const = 0;
@@ -392,6 +409,7 @@ public:
 		PortType type = PortType::PORT_TYPE_MAX;
 		const char *name;
 		const char *string;
+		int group_id = 0;
 	};
 
 	static const Port ports[];
@@ -407,6 +425,12 @@ public:
 	virtual String get_output_port_name(int p_port) const override;
 
 	virtual bool is_port_separator(int p_index) const override;
+
+	virtual int get_group_count() const;
+	virtual int get_port_group(int p_port) const;
+	virtual Set<int> get_group_ports(int p_group) const;
+	virtual String get_group_name(int p_group) const;
+	virtual bool is_group_expanded_by_default(int p_group) const;
 
 	virtual String get_caption() const override;
 

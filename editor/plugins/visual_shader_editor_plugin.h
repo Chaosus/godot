@@ -122,6 +122,8 @@ public:
 	int get_constant_index(float p_constant) const;
 	void update_node_size(int p_node_id);
 	void update_theme();
+	void update_connections(VisualShader::Type p_type);
+	void check_output_node_connections(VisualShader::Type p_type, bool p_previously_connected);
 	VisualShader::Type get_shader_type() const;
 
 	VisualShaderGraphPlugin();
@@ -405,6 +407,12 @@ class VisualShaderEditor : public VBoxContainer {
 	void _expand_output_port(int p_node, int p_port, bool p_expand);
 
 	void _expression_focus_out(Object *code_edit, int p_node);
+	void _expand_output_node_group(bool p_expand, int p_node, int p_group_index);
+
+	int last_expanded_group = -1;
+	bool last_expand = false;
+
+	void _reconnect_expanded_ports(int p_node, List<VisualShader::Connection> &r_connections, Map<int, int> *r_remapped_ports = nullptr);
 
 	void _set_node_size(int p_type, int p_node, const Size2 &p_size);
 	void _node_resized(const Vector2 &p_new_size, int p_type, int p_node);
@@ -439,6 +447,7 @@ protected:
 
 public:
 	void update_custom_nodes();
+	void update_connections(VisualShader::Type p_type);
 	void add_plugin(const Ref<VisualShaderNodePlugin> &p_plugin);
 	void remove_plugin(const Ref<VisualShaderNodePlugin> &p_plugin);
 
