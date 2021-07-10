@@ -3024,6 +3024,13 @@ VisualScriptNode::TypeGuess VisualScriptEditor::_guess_output_type(int p_port_ac
 		in_guesses.push_back(g);
 	}
 
+	// To prevent the warning from appearing on node creation.
+	if (node->get_output_value_port_count() <= p_port_action_output) {
+		VisualScriptNode::TypeGuess tg;
+		tg.type = Variant::NIL;
+		return tg;
+	}
+
 	return node->guess_output_type(in_guesses.ptrw(), p_port_action_output);
 }
 
