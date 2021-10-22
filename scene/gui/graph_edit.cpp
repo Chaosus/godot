@@ -765,8 +765,8 @@ bool GraphEdit::is_in_hot_zone(const Vector2 &pos, const Vector2 &p_mouse_pos, c
 		Rect2 rect = child->get_rect();
 
 		// To prevent intersections with other nodes.
-		rect.position *= zoom;
-		rect.size *= zoom;
+		rect.position /= zoom;
+		rect.size /= zoom;
 
 		if (rect.has_point(p_mouse_pos)) {
 			//check sub-controls
