@@ -656,7 +656,7 @@ public:
 	//RID shader_create() override;
 
 	void shader_set_code(RID p_shader, const String &p_code) override;
-	String shader_get_code(RID p_shader) const override;
+	String shader_get_code(RID p_shader, int p_pass = 0) const override;
 	void shader_get_param_list(RID p_shader, List<PropertyInfo> *p_param_list) const override;
 
 	void shader_set_default_texture_param(RID p_shader, const StringName &p_name, RID p_texture, int p_index) override;

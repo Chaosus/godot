@@ -1397,7 +1397,7 @@ void RendererStorageRD::shader_set_code(RID p_shader, const String &p_code) {
 	Shader *shader = shader_owner.get_or_null(p_shader);
 	ERR_FAIL_COND(!shader);
 
-	shader->code = p_code;
+	shader->code = ShaderLanguage::get_shader_passes(p_code);
 	String mode_string = ShaderLanguage::get_shader_type(p_code);
 
 	ShaderType new_type;
@@ -1469,10 +1469,12 @@ void RendererStorageRD::shader_set_code(RID p_shader, const String &p_code) {
 	}
 }
 
-String RendererStorageRD::shader_get_code(RID p_shader) const {
+String RendererStorageRD::shader_get_code(RID p_shader, int p_pass) const {
 	Shader *shader = shader_owner.get_or_null(p_shader);
 	ERR_FAIL_COND_V(!shader, String());
-	return shader->code;
+	ERR_FAIL_COND_V(!shader->code.has(p_pass), String());
+
+	return shader->code[p_pass];
 }
 
 void RendererStorageRD::shader_get_param_list(RID p_shader, List<PropertyInfo> *p_param_list) const {

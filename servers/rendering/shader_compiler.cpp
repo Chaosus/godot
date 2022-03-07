@@ -303,8 +303,10 @@ void ShaderCompiler::_dump_function_deps(const SL::ShaderNode *p_node, const Str
 
 	Vector<StringName> uses_functions;
 
-	for (Set<StringName>::Element *E = p_node->functions[fidx].uses_function.front(); E; E = E->next()) {
-		uses_functions.push_back(E->get());
+	for (Map<int, Set<StringName>>::Element *E = p_node->functions[fidx].uses_function.front(); E; E = E->next()) {
+		for (Set<StringName>::Element *E2 = E->get().front(); E2; E2 = E2->next()) {
+			uses_functions.push_back(E2->get());
+		}
 	}
 	uses_functions.sort_custom<StringName::AlphCompare>(); //ensure order is deterministic so the same shader is always produced
 
@@ -442,18 +444,20 @@ String ShaderCompiler::_dump_node_code(const SL::Node *p_node, int p_level, Gene
 		case SL::Node::TYPE_SHADER: {
 			SL::ShaderNode *pnode = (SL::ShaderNode *)p_node;
 
-			for (int i = 0; i < pnode->render_modes.size(); i++) {
-				if (p_default_actions.render_mode_defines.has(pnode->render_modes[i]) && !used_rmode_defines.has(pnode->render_modes[i])) {
-					r_gen_code.defines.push_back(p_default_actions.render_mode_defines[pnode->render_modes[i]]);
-					used_rmode_defines.insert(pnode->render_modes[i]);
+			for (int i = 0; i < pnode->vrender_modes.size(); i++) {
+				StringName mode = pnode->vrender_modes[i].name;
+
+				if (p_default_actions.render_mode_defines.has(mode) && !used_rmode_defines.has(mode)) {
+					r_gen_code.defines.push_back(p_default_actions.render_mode_defines[mode]);
+					used_rmode_defines.insert(mode);
 				}
 
-				if (p_actions.render_mode_flags.has(pnode->render_modes[i])) {
-					*p_actions.render_mode_flags[pnode->render_modes[i]] = true;
+				if (p_actions.render_mode_flags.has(mode)) {
+					*p_actions.render_mode_flags[mode] = true;
 				}
 
-				if (p_actions.render_mode_values.has(pnode->render_modes[i])) {
-					Pair<int *, int> &p = p_actions.render_mode_values[pnode->render_modes[i]];
+				if (p_actions.render_mode_values.has(mode)) {
+					Pair<int *, int> &p = p_actions.render_mode_values[mode];
 					*p.first = p.second;
 				}
 			}
@@ -1305,6 +1309,15 @@ ShaderLanguage::DataType ShaderCompiler::_get_variable_type(const StringName &p_
 }
 
 Error ShaderCompiler::compile(RS::ShaderMode p_mode, const String &p_code, IdentifierActions *p_actions, const String &p_path, GeneratedCode &r_gen_code) {
+	List<GeneratedCode> passes;
+	Error error = compile(p_mode, p_code, p_actions, p_path, passes);
+	if (!passes.is_empty()) {
+		r_gen_code = passes[0];
+	}
+	return error;
+}
+
+Error ShaderCompiler::compile(RS::ShaderMode p_mode, const String &p_code, IdentifierActions *p_actions, const String &p_path, List<GeneratedCode> &r_passes) {
 	SL::ShaderCompileInfo info;
 	info.functions = ShaderTypes::get_singleton()->get_functions(p_mode);
 	info.render_modes = ShaderTypes::get_singleton()->get_modes(p_mode);
@@ -1329,8 +1342,7 @@ Error ShaderCompiler::compile(RS::ShaderMode p_mode, const String &p_code, Ident
 		return err;
 	}
 
-	r_gen_code.defines.clear();
-	r_gen_code.code.clear();
+	GeneratedCode r_gen_code;
 	for (int i = 0; i < STAGE_MAX; i++) {
 		r_gen_code.stage_globals[i] = String();
 	}
@@ -1346,6 +1358,7 @@ Error ShaderCompiler::compile(RS::ShaderMode p_mode, const String &p_code, Ident
 	shader = parser.get_shader();
 	function = nullptr;
 	_dump_node_code(shader, 1, r_gen_code, *p_actions, actions, false);
+	r_passes.push_back(r_gen_code);
 
 	return OK;
 }

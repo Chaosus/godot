@@ -1355,7 +1355,7 @@ void RasterizerStorageGLES3::shader_set_code(RID p_shader, const String &p_code)
 	_shader_make_dirty(shader);
 }
 
-String RasterizerStorageGLES3::shader_get_code(RID p_shader) const {
+String RasterizerStorageGLES3::shader_get_code(RID p_shader, int p_pass) const {
 	const Shader *shader = shader_owner.get_or_null(p_shader);
 	ERR_FAIL_COND_V(!shader, "");
 

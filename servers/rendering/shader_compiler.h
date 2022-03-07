@@ -123,6 +123,7 @@ private:
 	static ShaderLanguage::DataType _get_variable_type(const StringName &p_type);
 
 public:
+	Error compile(RS::ShaderMode p_mode, const String &p_code, IdentifierActions *p_actions, const String &p_path, List<GeneratedCode> &r_passes);
 	Error compile(RS::ShaderMode p_mode, const String &p_code, IdentifierActions *p_actions, const String &p_path, GeneratedCode &r_gen_code);
 
 	void initialize(DefaultIdentifierActions p_actions);

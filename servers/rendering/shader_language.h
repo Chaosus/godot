@@ -152,6 +152,7 @@ public:
 		TK_COLON,
 		TK_SEMICOLON,
 		TK_PERIOD,
+		TK_PASS,
 		TK_UNIFORM,
 		TK_INSTANCE,
 		TK_GLOBAL,
@@ -610,6 +611,11 @@ public:
 	};
 
 	struct ShaderNode : public Node {
+		struct RenderMode {
+			StringName name;
+			int pass;
+		};
+
 		struct Constant {
 			StringName name;
 			DataType type;
@@ -617,18 +623,21 @@ public:
 			DataPrecision precision;
 			ConstantNode *initializer;
 			int array_size;
+			int pass;
 		};
 
 		struct Function {
 			StringName name;
 			FunctionNode *function;
-			Set<StringName> uses_function;
+			Map<int, Set<StringName>> uses_function;
 			bool callable;
+			int pass;
 		};
 
 		struct Struct {
 			StringName name;
 			StructNode *shader_struct;
+			int pass;
 		};
 
 		struct Varying {
@@ -646,6 +655,7 @@ public:
 			DataPrecision precision = PRECISION_DEFAULT;
 			int array_size = 0;
 			TkPos tkpos;
+			int pass;
 
 			Varying() {}
 		};
@@ -701,11 +711,14 @@ public:
 		Map<StringName, Varying> varyings;
 		Map<StringName, Uniform> uniforms;
 		Map<StringName, Struct> structs;
-		Vector<StringName> render_modes;
+		Map<StringName, RenderMode> render_modes;
 
+		Vector<RenderMode> vrender_modes;
 		Vector<Function> functions;
 		Vector<Constant> vconstants;
 		Vector<Struct> vstructs;
+
+		Set<int> defined_passes;
 
 		ShaderNode() :
 				Node(TYPE_SHADER) {}
@@ -921,6 +934,7 @@ private:
 	int tk_line;
 
 	StringName current_function;
+	int current_pass;
 	bool last_const = false;
 	StringName last_name;
 
@@ -1080,6 +1094,7 @@ public:
 
 	void clear();
 
+	static Map<int, String> get_shader_passes(const String &p_code);
 	static String get_shader_type(const String &p_code);
 
 	struct ShaderCompileInfo {

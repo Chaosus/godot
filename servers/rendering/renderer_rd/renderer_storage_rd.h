@@ -373,7 +373,7 @@ private:
 
 	struct Shader {
 		ShaderData *data;
-		String code;
+		Map<int, String> code;
 		ShaderType type;
 		Map<StringName, Map<int, RID>> default_texture_parameter;
 		Set<Material *> owners;
@@ -1425,7 +1425,7 @@ public:
 	void shader_initialize(RID p_shader);
 
 	void shader_set_code(RID p_shader, const String &p_code);
-	String shader_get_code(RID p_shader) const;
+	String shader_get_code(RID p_shader, int p_pass = 0) const;
 	void shader_get_param_list(RID p_shader, List<PropertyInfo> *p_param_list) const;
 
 	void shader_set_default_texture_param(RID p_shader, const StringName &p_name, RID p_texture, int p_index);

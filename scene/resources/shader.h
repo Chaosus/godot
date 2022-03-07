@@ -70,7 +70,7 @@ public:
 	virtual Mode get_mode() const;
 
 	void set_code(const String &p_code);
-	String get_code() const;
+	String get_code(int p_pass = 0) const;
 
 	void get_param_list(List<PropertyInfo> *p_params) const;
 	bool has_param(const StringName &p_param) const;

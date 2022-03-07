@@ -2703,6 +2703,7 @@
 		<method name="shader_get_code" qualifiers="const">
 			<return type="String" />
 			<argument index="0" name="shader" type="RID" />
+			<argument index="1" name="pass" type="int" default="0" />
 			<description>
 				Returns a shader's code.
 			</description>

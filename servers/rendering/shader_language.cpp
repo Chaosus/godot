@@ -290,6 +290,7 @@ const ShaderLanguage::KeyWord ShaderLanguage::keyword_list[] = {
 	{ TK_CF_CONTINUE, "continue" },
 	{ TK_CF_RETURN, "return" },
 	{ TK_CF_DISCARD, "discard" },
+	{ TK_PASS, "pass" },
 	{ TK_UNIFORM, "uniform" },
 	{ TK_INSTANCE, "instance" },
 	{ TK_GLOBAL, "global" },
@@ -955,6 +956,7 @@ bool ShaderLanguage::is_token_nonvoid_datatype(TokenType p_type) {
 
 void ShaderLanguage::clear() {
 	current_function = StringName();
+	current_pass = -1;
 	last_name = StringName();
 	last_type = IDENTIFIER_MAX;
 
@@ -1163,7 +1165,7 @@ bool ShaderLanguage::_find_identifier(const BlockNode *p_block, bool p_allow_rea
 	}
 
 	for (int i = 0; i < shader->functions.size(); i++) {
-		if (!shader->functions[i].callable) {
+		if (!shader->functions[i].callable || shader->functions[i].pass != current_pass) {
 			continue;
 		}
 
@@ -3036,7 +3038,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, const FunctionI
 	String arg_list = "";
 
 	for (int i = 0; i < shader->functions.size(); i++) {
-		if (name != shader->functions[i].name) {
+		if (name != shader->functions[i].name || current_pass != shader->functions[i].pass) {
 			continue;
 		}
 
@@ -4820,11 +4822,14 @@ ShaderLanguage::Node *ShaderLanguage::_parse_expression(BlockNode *p_block, cons
 					//test if function was parsed first
 					int function_index = -1;
 					for (int i = 0; i < shader->functions.size(); i++) {
-						if (shader->functions[i].name == name) {
+						if (shader->functions[i].name == name && shader->functions[i].pass == current_pass) {
 							//add to current function as dependency
 							for (int j = 0; j < shader->functions.size(); j++) {
 								if (shader->functions[j].name == current_function) {
-									shader->functions.write[j].uses_function.insert(name);
+									if (!shader->functions.write[j].uses_function.has(current_pass)) {
+										shader->functions.write[j].uses_function.insert(current_pass, Set<StringName>());
+									}
+									shader->functions.write[j].uses_function[current_pass].insert(name);
 									break;
 								}
 							}
@@ -7553,7 +7558,8 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 						return ERR_PARSE_ERROR;
 					}
 
-					shader->render_modes.push_back(mode);
+					shader->render_modes.insert(mode, { mode, current_pass });
+					shader->vrender_modes.push_back({ mode, current_pass });
 
 					tk = _get_token();
 					if (tk.type == TK_COMMA) {
@@ -7722,6 +7728,23 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				}
 #endif // DEBUG_ENABLED
 			} break;
+			case TK_PASS: {
+				if (shader_type_identifier == "particles" || shader_type_identifier == "sky" || shader_type_identifier == "fog") {
+					_set_error(vformat(RTR("Shader passes are not supported by the '%s' shader type!"), shader_type_identifier));
+					return ERR_PARSE_ERROR;
+				}
+				tk = _get_token();
+				if (tk.type != TK_INT_CONSTANT || tk.constant < 0) {
+					_set_error(RTR("Expected a non-negative integer constant."));
+					return ERR_PARSE_ERROR;
+				}
+				current_pass = (int)tk.constant;
+				if (shader->defined_passes.has(current_pass)) {
+					_set_error(RTR("Pass with that index is already defined."));
+					return ERR_PARSE_ERROR;
+				}
+				shader->defined_passes.insert(current_pass);
+			} break;
 			case TK_GLOBAL: {
 				tk = _get_token();
 				if (tk.type != TK_UNIFORM) {
@@ -7749,6 +7772,11 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				if (!uniform) {
 					if (shader_type_identifier == "particles" || shader_type_identifier == "sky" || shader_type_identifier == "fog") {
 						_set_error(vformat(RTR("Varyings cannot be used in '%s' shaders."), shader_type_identifier));
+						return ERR_PARSE_ERROR;
+					}
+				} else {
+					if (current_pass >= 0) {
+						_set_error(RTR("Uniforms must be defined before any pass block."));
 						return ERR_PARSE_ERROR;
 					}
 				}
@@ -8186,6 +8214,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 					varying.interpolation = interpolation;
 					varying.tkpos = prev_pos;
 					varying.array_size = array_size;
+					varying.pass = current_pass;
 
 					tk = _get_token();
 					if (tk.type != TK_SEMICOLON && tk.type != TK_BRACKET_OPEN) {
@@ -8320,6 +8349,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 						constant.precision = precision;
 						constant.initializer = nullptr;
 						constant.array_size = array_size;
+						constant.pass = current_pass;
 
 						if (tk.type == TK_BRACKET_OPEN) {
 							if (RenderingServer::get_singleton()->is_low_end()) {
@@ -8600,7 +8630,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 				}
 
 				for (int i = 0; i < shader->functions.size(); i++) {
-					if (!shader->functions[i].callable && shader->functions[i].name == name) {
+					if (!shader->functions[i].callable && shader->functions[i].name == name && shader->functions[i].pass == current_pass) {
 						_set_redefinition_error(String(name));
 						return ERR_PARSE_ERROR;
 					}
@@ -8610,6 +8640,7 @@ Error ShaderLanguage::_parse_shader(const Map<StringName, FunctionInfo> &p_funct
 
 				function.callable = !p_functions.has(name);
 				function.name = name;
+				function.pass = current_pass;
 
 				FunctionNode *func_node = alloc_node<FunctionNode>();
 
@@ -8940,6 +8971,52 @@ static int _get_first_ident_pos(const String &p_code) {
 #undef GETCHAR
 }
 
+Map<int, String> ShaderLanguage::get_shader_passes(const String &p_code) {
+	Map<int, String> passes;
+	bool invalid_shader = false;
+	int pass_id = 0;
+	int p = 0;
+	String pass;
+	do {
+		p = p_code.find("pass ", p);
+		if (p == -1) {
+			if (valid_pass_header) {
+				passes.insert(pass_id, )
+			}
+			break;
+		}
+		if (p - 1 >= 0 && p + 5 < p_code.length() && p_code[p - 1] == '\n') {
+			String id;
+			bool valid_pass_header = false;
+			for (int i = p + 5; i < p_code.length(); i++) {
+				if (p_code == '\n') {
+					if (id.is_valid_int()) {
+						valid_pass_header = true;
+						pass_id = id.to_int();
+					}
+					break;
+				}
+				if (is_digit(p_code[i])) {
+					id += String::chr(p_code[i]);
+				} else {
+					invalid_shader = true;
+					break;
+				}
+			}
+			if (pass_count > 0) {
+			}
+		}
+	} while (true);
+
+	if (invalid_shader) {
+		passes.clear();
+	}
+	if (passes.is_empty()) {
+		passes.insert(0, p_code);
+	}
+	return passes;
+}
+
 String ShaderLanguage::get_shader_type(const String &p_code) {
 	bool reading_type = false;
 
@@ -9107,7 +9184,7 @@ Error ShaderLanguage::complete(const String &p_code, const ShaderCompileInfo &p_
 				}
 				bool found = false;
 				for (int i = 0; i < shader->functions.size(); i++) {
-					if (shader->functions[i].name == E.key) {
+					if (shader->functions[i].name == E.key && shader->functions[i].pass == current_pass) {
 						found = true;
 						break;
 					}
@@ -9192,7 +9269,7 @@ Error ShaderLanguage::complete(const String &p_code, const ShaderCompileInfo &p_
 				}
 
 				for (int i = 0; i < shader->functions.size(); i++) {
-					if (!shader->functions[i].callable || shader->functions[i].name == skip_function) {
+					if (!shader->functions[i].callable || shader->functions[i].name == skip_function || shader->functions[i].pass != current_pass) {
 						continue;
 					}
 					matches.insert(String(shader->functions[i].name), ScriptCodeCompletionOption::KIND_FUNCTION);
@@ -9254,7 +9331,7 @@ Error ShaderLanguage::complete(const String &p_code, const ShaderCompileInfo &p_
 			}
 
 			for (int i = 0; i < shader->functions.size(); i++) {
-				if (!shader->functions[i].callable) {
+				if (!shader->functions[i].callable || shader->functions[i].pass != current_pass) {
 					continue;
 				}
 				if (shader->functions[i].name == completion_function) {

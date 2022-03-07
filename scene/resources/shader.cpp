@@ -61,9 +61,9 @@ void Shader::set_code(const String &p_code) {
 	emit_changed();
 }
 
-String Shader::get_code() const {
+String Shader::get_code(int p_pass) const {
 	_update_shader();
-	return RenderingServer::get_singleton()->shader_get_code(shader);
+	return RenderingServer::get_singleton()->shader_get_code(shader, p_pass);
 }
 
 void Shader::get_param_list(List<PropertyInfo> *p_params) const {
@@ -146,7 +146,7 @@ void Shader::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_mode"), &Shader::get_mode);
 
 	ClassDB::bind_method(D_METHOD("set_code", "code"), &Shader::set_code);
-	ClassDB::bind_method(D_METHOD("get_code"), &Shader::get_code);
+	ClassDB::bind_method(D_METHOD("get_code", "pass"), &Shader::get_code);
 
 	ClassDB::bind_method(D_METHOD("set_default_texture_param", "param", "texture", "index"), &Shader::set_default_texture_param, DEFVAL(0));
 	ClassDB::bind_method(D_METHOD("get_default_texture_param", "param", "index"), &Shader::get_default_texture_param, DEFVAL(0));
