@@ -44,6 +44,7 @@
 #include "scene/2d/canvas_modulate.h"
 #include "scene/2d/collision_polygon_2d.h"
 #include "scene/2d/collision_shape_2d.h"
+#include "scene/2d/compute_surface_2d.h"
 #include "scene/2d/cpu_particles_2d.h"
 #include "scene/2d/gpu_particles_2d.h"
 #include "scene/2d/joint_2d.h"
@@ -154,6 +155,7 @@
 #include "scene/resources/cylinder_shape_3d.h"
 #include "scene/resources/default_theme/default_theme.h"
 #include "scene/resources/environment.h"
+#include "scene/resources/fluid_2d.h"
 #include "scene/resources/font.h"
 #include "scene/resources/gradient.h"
 #include "scene/resources/height_map_shape_3d.h"
@@ -707,6 +709,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(CanvasGroup);
 	GDREGISTER_CLASS(CPUParticles2D);
 	GDREGISTER_CLASS(GPUParticles2D);
+	GDREGISTER_CLASS(ComputeSurface2D);
 	GDREGISTER_CLASS(Sprite2D);
 	GDREGISTER_CLASS(SpriteFrames);
 	GDREGISTER_CLASS(AnimatedSprite2D);
@@ -878,6 +881,8 @@ void register_scene_types() {
 	GDREGISTER_CLASS(PlaceholderTexture2DArray);
 	GDREGISTER_CLASS(PlaceholderCubemap);
 	GDREGISTER_CLASS(PlaceholderCubemapArray);
+	GDREGISTER_ABSTRACT_CLASS(ComputeAlgorithm2D);
+	GDREGISTER_CLASS(Fluid2D);
 
 	GDREGISTER_CLASS(Animation);
 	GDREGISTER_CLASS(AnimationLibrary);
