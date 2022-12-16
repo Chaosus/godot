@@ -2077,6 +2077,18 @@ void RendererCanvasCull::canvas_item_set_default_texture_repeat(RID p_item, RS::
 	ci->texture_repeat = p_repeat;
 }
 
+void RendererCanvasCull::canvas_item_instance_set_shader_parameter(RID p_instance, const StringName &, const Variant &p_value) {
+}
+
+Variant RendererCanvasCull::canvas_item_instance_get_shader_parameter(RID p_instance, const StringName &) const {
+}
+
+Variant RendererCanvasCull::canvas_item_instance_get_shader_parameter_default_value(RID p_instance, const StringName &) const {
+}
+
+void RendererCanvasCull::canvas_item_instance_get_shader_parameter_list(RID p_instance, List<PropertyInfo> *p_parameters) const {
+}
+
 void RendererCanvasCull::update_visibility_notifiers() {
 	SelfList<Item::VisibilityNotifierData> *E = visibility_notifier_list.first();
 	while (E) {

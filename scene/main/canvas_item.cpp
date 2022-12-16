@@ -30,6 +30,7 @@
 
 #include "canvas_item.h"
 
+#include "core/core_string_names.h"
 #include "core/object/message_queue.h"
 #include "scene/2d/canvas_group.h"
 #include "scene/main/canvas_layer.h"
@@ -460,6 +461,76 @@ int CanvasItem::get_light_mask() const {
 	return light_mask;
 }
 
+const StringName *CanvasItem::_instance_uniform_get_remap(const StringName p_name) const {
+	StringName *r = instance_shader_parameter_property_remap.getptr(p_name);
+	if (!r) {
+		String s = p_name;
+		if (s.begins_with("instance_shader_parameters/")) {
+			StringName pname = StringName(s);
+			StringName name = s.replace("instance_shader_parameters/", "");
+			instance_shader_parameter_property_remap[pname] = name;
+			return instance_shader_parameter_property_remap.getptr(pname);
+		}
+		return nullptr;
+	}
+
+	return r;
+}
+
+bool CanvasItem::_set(const StringName &p_name, const Variant &p_value) {
+	const StringName *r = _instance_uniform_get_remap(p_name);
+	if (r) {
+		set_instance_shader_parameter(*r, p_value);
+		return true;
+	}
+
+	return false;
+}
+
+bool CanvasItem::_get(const StringName &p_name, Variant &r_ret) const {
+	const StringName *r = _instance_uniform_get_remap(p_name);
+	if (r) {
+		r_ret = get_instance_shader_parameter(*r);
+		return true;
+	}
+
+	return false;
+}
+
+void CanvasItem::_get_property_list(List<PropertyInfo> *p_list) const {
+	if (material.is_null()) {
+		return;
+	}
+	Ref<ShaderMaterial> sm = Object::cast_to<ShaderMaterial>(material.ptr());
+	if (sm.is_null()) {
+		return;
+	}
+	Ref<Shader> s = sm->get_shader();
+	if (shader.is_null()) {
+		return;
+	}
+	RID shader = shader->get_rid();
+
+	List<PropertyInfo> pinfo;
+	RS::get_singleton()->get_shader_parameter_list(shader, &pinfo);
+
+	for (PropertyInfo &pi : pinfo) {
+		bool has_def_value = false;
+		Variant def_value = RS::get_singleton()->shader_get_parameter_default(shader, pi.name);
+		if (def_value.get_type() != Variant::NIL) {
+			has_def_value = true;
+		}
+		if (instance_shader_parameters.has(pi.name)) {
+			pi.usage = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_STORAGE | (has_def_value ? (PROPERTY_USAGE_CHECKABLE | PROPERTY_USAGE_CHECKED) : PROPERTY_USAGE_NONE);
+		} else {
+			pi.usage = PROPERTY_USAGE_EDITOR | (has_def_value ? PROPERTY_USAGE_CHECKABLE : PROPERTY_USAGE_NONE); //do not save if not changed
+		}
+
+		pi.name = "instance_shader_parameters/" + pi.name;
+		p_list->push_back(pi);
+	}
+}
+
 void CanvasItem::item_rect_changed(bool p_size_changed) {
 	if (p_size_changed) {
 		queue_redraw();
@@ -875,7 +946,13 @@ bool CanvasItem::is_draw_behind_parent_enabled() const {
 }
 
 void CanvasItem::set_material(const Ref<Material> &p_material) {
+	if (material.is_valid()) {
+		material->disconnect(CoreStringNames::get_singleton()->property_list_changed, callable_mp((Object *)this, &Object::notify_property_list_changed));
+	}
 	material = p_material;
+	if (material.is_valid()) {
+		material->connect(CoreStringNames::get_singleton()->property_list_changed, callable_mp((Object *)this, &Object::notify_property_list_changed));
+	}
 	RID rid;
 	if (material.is_valid()) {
 		rid = material->get_rid();
@@ -1070,6 +1147,9 @@ void CanvasItem::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_clip_children_mode", "mode"), &CanvasItem::set_clip_children_mode);
 	ClassDB::bind_method(D_METHOD("get_clip_children_mode"), &CanvasItem::get_clip_children_mode);
+
+	ClassDB::bind_method(D_METHOD("set_instance_shader_parameter", "name", "value"), &CanvasItem::set_instance_shader_parameter);
+	ClassDB::bind_method(D_METHOD("get_instance_shader_parameter", "name"), &CanvasItem::get_instance_shader_parameter);
 
 	GDVIRTUAL_BIND(_draw);
 
@@ -1332,6 +1412,37 @@ CanvasItem::TextureFilter CanvasItem::get_texture_filter_in_tree() {
 CanvasItem::TextureRepeat CanvasItem::get_texture_repeat_in_tree() {
 	_refresh_texture_repeat_cache();
 	return (TextureRepeat)texture_repeat_cache;
+}
+
+void CanvasItem::set_instance_shader_parameter(const StringName &p_name, const Variant &p_value) {
+	ERR_FAIL_COND_V(!material.is_valid(), Variant());
+
+	Ref<ShaderMaterial> shader_material = Object::cast_to<ShaderMaterial>(material.ptr());
+	ERR_FAIL_COND_V(!shader_material.is_valid(), Variant());
+
+	Ref<Shader> shader = shader_material->get_shader();
+	ERR_FAIL_COND_V(!shader.is_valid(), Variant());
+
+	RID shader_rid = shader->get_rid();
+
+	if (p_value.get_type() == Variant::NIL) {
+		Variant def_value = RS::get_singleton()->shader_get_parameter_default(shader_rid, p_name);
+		RS::get_singleton()->material_set_param(material->get_rid(), p_name, def_value);
+		instance_shader_parameters.erase(p_value);
+	} else {
+		instance_shader_parameters[p_name] = p_value;
+		if (p_value.get_type() == Variant::OBJECT) {
+			RID tex_id = p_value;
+			RS::get_singleton()->material_set_param(material->get_rid(), p_name, tex_id);
+		} else {
+			RS::get_singleton()->material_set_param(material->get_rid(), p_name, p_value);
+		}
+	}
+}
+
+Variant CanvasItem::get_instance_shader_parameter(const StringName &p_name) const {
+	ERR_FAIL_COND_V(!material.is_valid(), Variant());
+	return RS::get_singleton()->material_get_param(material->get_rid(), p_name);
 }
 
 CanvasItem::CanvasItem() :

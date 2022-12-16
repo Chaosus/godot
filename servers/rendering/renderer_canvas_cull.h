@@ -315,6 +315,11 @@ public:
 	void canvas_item_set_default_texture_filter(RID p_item, RS::CanvasItemTextureFilter p_filter);
 	void canvas_item_set_default_texture_repeat(RID p_item, RS::CanvasItemTextureRepeat p_repeat);
 
+	void canvas_item_instance_set_shader_parameter(RID p_instance, const StringName &, const Variant &p_value);
+	Variant canvas_item_instance_get_shader_parameter(RID p_instance, const StringName &) const;
+	Variant canvas_item_instance_get_shader_parameter_default_value(RID p_instance, const StringName &) const;
+	void canvas_item_instance_get_shader_parameter_list(RID p_instance, List<PropertyInfo> *p_parameters) const;
+
 	void update_visibility_notifiers();
 
 	bool free(RID p_rid);

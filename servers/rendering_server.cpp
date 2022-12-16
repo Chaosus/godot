@@ -2598,6 +2598,13 @@ void RenderingServer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("canvas_item_set_self_modulate", "item", "color"), &RenderingServer::canvas_item_set_self_modulate);
 	ClassDB::bind_method(D_METHOD("canvas_item_set_draw_behind_parent", "item", "enabled"), &RenderingServer::canvas_item_set_draw_behind_parent);
 
+	/* CANVAS ITEM INSTANCES */
+
+	ClassDB::bind_method(D_METHOD("canvas_item_instance_set_shader_parameter", "instance", "parameter", "value"), &RenderingServer::canvas_item_instance_set_shader_parameter);
+	ClassDB::bind_method(D_METHOD("canvas_item_instance_get_shader_parameter", "instance", "parameter"), &RenderingServer::canvas_item_instance_get_shader_parameter);
+	ClassDB::bind_method(D_METHOD("canvas_item_instance_get_shader_parameter_default_value", "instance", "parameter"), &RenderingServer::canvas_item_instance_get_shader_parameter_default_value);
+	ClassDB::bind_method(D_METHOD("canvas_item_instance_get_shader_parameter_list", "instance"), &RenderingServer::canvas_item_instance_get_shader_parameter_list);
+
 	/* Primitives */
 
 	ClassDB::bind_method(D_METHOD("canvas_item_add_line", "item", "from", "to", "color", "width", "antialiased"), &RenderingServer::canvas_item_add_line, DEFVAL(-1.0), DEFVAL(false));

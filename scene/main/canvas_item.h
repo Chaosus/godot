@@ -144,7 +144,16 @@ private:
 	void _refresh_texture_filter_cache();
 	void _update_texture_filter_changed(bool p_propagate);
 
+	mutable HashMap<StringName, Variant> instance_shader_parameters;
+	mutable HashMap<StringName, StringName> instance_shader_parameter_property_remap;
+
+	const StringName *_instance_uniform_get_remap(const StringName p_name) const;
+
 protected:
+	bool _set(const StringName &p_name, const Variant &p_value);
+	bool _get(const StringName &p_name, Variant &r_ret) const;
+	void _get_property_list(List<PropertyInfo> *p_list) const;
+
 	_FORCE_INLINE_ void _notify_transform() {
 		if (!is_inside_tree()) {
 			return;
@@ -354,6 +363,9 @@ public:
 
 	TextureFilter get_texture_filter_in_tree();
 	TextureRepeat get_texture_repeat_in_tree();
+
+	void set_instance_shader_parameter(const StringName &p_name, const Variant &p_value);
+	Variant get_instance_shader_parameter(const StringName &p_name) const;
 
 	// Used by control nodes to retrieve the parent's anchorable area
 	virtual Rect2 get_anchorable_rect() const { return Rect2(0, 0, 0, 0); };
