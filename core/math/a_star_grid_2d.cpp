@@ -269,6 +269,152 @@ void AStarGrid2D::fill_weight_scale_region(const Rect2i &p_region, real_t p_weig
 	}
 }
 
+void AStarGrid2D::add_portal(const Vector2i &p_id, bool p_enabled, real_t p_travel_weight_scale) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_id), vformat("Can't add a portal. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_id)->portal != nullptr, vformat("Can't add a portal. The portal at (%s,%s) is already created.", p_id.x, p_id.y));
+
+	_get_point_unchecked(p_id)->add_portal(p_enabled, p_travel_weight_scale);
+	portal_points.push_back(p_id);
+}
+
+void AStarGrid2D::remove_portal(const Vector2i &p_id) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_id), vformat("Can't remove a portal. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_id)->portal == nullptr, vformat("Can't remove a portal. The portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	_get_point_unchecked(p_id)->delete_portal();
+	portal_points.erase(p_id);
+}
+
+void AStarGrid2D::connect_portals(const Vector2i &p_from_id, const Vector2i &p_to_id, bool p_bidirectional) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_from_id), vformat("Can't connect portals. Start point (%s,%s) out of bounds.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_to_id), vformat("Can't connect portals. Target point (%s,%s) out of bounds.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal == nullptr, vformat("Can't connect portals. Start portal at (%s,%s) is not exist.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_to_id)->portal == nullptr, vformat("Can't connect portals. Target portal at (%s,%s) is not exist.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal->links.has(p_to_id), "Can't connect portals. Connection already established.");
+
+	_get_point_unchecked(p_from_id)->portal->links.insert(p_to_id);
+
+	if (p_bidirectional && !_get_point_unchecked(p_to_id)->portal->links.has(p_from_id)) {
+		_get_point_unchecked(p_to_id)->portal->links.insert(p_from_id);
+	}
+}
+
+void AStarGrid2D::connect_portal_to_point(const Vector2i &p_from_id, const Vector2i &p_to_id) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_from_id), vformat("Can't connect portal to a point. Start point (%s,%s) out of bounds.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_to_id), vformat("Can't connect portal to a point. Target point (%s,%s) out of bounds.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal == nullptr, vformat("Can't connect portal to a point. Portal at (%s,%s) is not exist.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal->links.has(p_to_id), "Can't connect portal to a point. Connection already established.");
+
+	_get_point_unchecked(p_from_id)->portal->links.insert(p_to_id);
+}
+
+void AStarGrid2D::disconnect_portals(const Vector2i &p_from_id, const Vector2i &p_to_id, bool p_bidirectional) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_from_id), vformat("Can't disconnect portals. Start point (%s,%s) out of bounds.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_to_id), vformat("Can't disconnect portals. Target point (%s,%s) out of bounds.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal == nullptr, vformat("Can't disconnect portals. Start portal at (%s,%s) is not exist.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_to_id)->portal == nullptr, vformat("Can't disconnect portals. Target portal at (%s,%s) is not exist.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(!_get_point_unchecked(p_from_id)->portal->links.has(p_to_id), "Can't disconnect portals. Connection already broken.");
+
+	_get_point_unchecked(p_from_id)->portal->links.erase(p_to_id);
+
+	if (p_bidirectional && _get_point_unchecked(p_to_id)->portal->links.has(p_from_id)) {
+		_get_point_unchecked(p_to_id)->portal->links.erase(p_from_id);
+	}
+}
+
+void AStarGrid2D::disconnect_portal_from_point(const Vector2i &p_from_id, const Vector2i &p_to_id) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_from_id), vformat("Can't disconnect portal from point. Start point (%s,%s) out of bounds.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_to_id), vformat("Can't disconnect portal from point. Target point (%s,%s) out of bounds.", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_from_id)->portal == nullptr, vformat("Can't disconnect portal from point. Portal at (%s,%s) is not exist.", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_MSG(!_get_point_unchecked(p_from_id)->portal->links.has(p_to_id), "Can't disconnect portal from point. Connection already broken.");
+
+	_get_point_unchecked(p_from_id)->portal->links.erase(p_to_id);
+}
+
+void AStarGrid2D::clear_portal_connections(const Vector2i &p_id, bool p_bidirectional) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_id), vformat("Can't clear portal connections. Portal point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_id)->portal == nullptr, vformat("Can't clear portal connections. Portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	if (p_bidirectional) {
+		for (const Vector2i &link : _get_point_unchecked(p_id)->portal->links) {
+			Point *p = _get_point_unchecked(link.x, link.y);
+			if (p->portal != nullptr && p->portal->links.has(p_id)) {
+				p->portal->links.erase(p_id);
+			}
+		}
+	}
+	_get_point_unchecked(p_id)->portal->links.clear();
+}
+
+bool AStarGrid2D::is_portal_existed_at(const Vector2i &p_id) const {
+	ERR_FAIL_COND_V_MSG(dirty, false, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_id), false, vformat("Can't check if portal is exist. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+
+	return _get_point_unchecked(p_id)->portal != nullptr;
+}
+
+bool AStarGrid2D::is_portal_connected_to(const Vector2i &p_from_id, const Vector2i &p_to_id) {
+	ERR_FAIL_COND_V_MSG(dirty, false, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_from_id), false, vformat("Can't check portal connection. Start point (%s,%s) out of bounds .", p_from_id.x, p_from_id.y));
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_to_id), false, vformat("Can't check portal connection. Target point (%s,%s) out of bounds .", p_to_id.x, p_to_id.y));
+	ERR_FAIL_COND_V_MSG(_get_point_unchecked(p_from_id)->portal == nullptr, false, vformat("Can't check portal connection. The portal at (%s,%s) is not exist.", p_from_id.x, p_from_id.y));
+
+	return _get_point_unchecked(p_from_id)->portal->links.has(p_to_id);
+}
+
+void AStarGrid2D::set_portal_disabled(const Vector2i &p_id, bool p_disabled) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+
+	String what = p_disabled ? "disable" : "enable";
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_id), vformat("Can't %s a portal. Point (%s,%s) out of bounds.", what, p_id.x, p_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_id)->portal == nullptr, vformat("Can't %s a portal. The portal at (%s,%s) is not exist.", what, p_id.x, p_id.y));
+
+	_get_point_unchecked(p_id)->portal->enabled = !p_disabled;
+}
+
+bool AStarGrid2D::is_portal_disabled(const Vector2i &p_id) const {
+	ERR_FAIL_COND_V_MSG(dirty, false, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_id), false, vformat("Can't get if portal is disabled. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_V_MSG(_get_point_unchecked(p_id)->portal == nullptr, false, vformat("Can't get if portal is disabled. The portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	return !_get_point_unchecked(p_id)->portal->enabled;
+}
+
+void AStarGrid2D::set_portal_travel_weight_scale(const Vector2i &p_id, real_t p_travel_weight_scale) {
+	ERR_FAIL_COND_MSG(dirty, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_MSG(!is_in_boundsv(p_id), vformat("Can't set portal's travel weight scale. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_MSG(_get_point_unchecked(p_id)->portal == nullptr, vformat("Can't set portal's travel weight scale. The portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	_get_point_unchecked(p_id)->portal->travel_weight_scale = p_travel_weight_scale;
+}
+
+real_t AStarGrid2D::get_portal_travel_weight_scale(const Vector2i &p_id) const {
+	ERR_FAIL_COND_V_MSG(dirty, 0, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_id), 0, vformat("Can't get portal's travel weight scale. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_V_MSG(_get_point_unchecked(p_id)->portal == nullptr, 0, vformat("Can't get portal's travel weight scale. The portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	return _get_point_unchecked(p_id)->portal->travel_weight_scale;
+}
+
+int AStarGrid2D::get_portal_connections_amount(const Vector2i &p_id) const {
+	ERR_FAIL_COND_V_MSG(dirty, 0, "Grid is not initialized. Call the update method.");
+	ERR_FAIL_COND_V_MSG(!is_in_boundsv(p_id), 0, vformat("Can't get portal connections amount. Point (%s,%s) out of bounds.", p_id.x, p_id.y));
+	ERR_FAIL_COND_V_MSG(_get_point_unchecked(p_id)->portal == nullptr, false, vformat("Can't get portal connections amount. The portal at (%s,%s) is not exist.", p_id.x, p_id.y));
+
+	return _get_point_unchecked(p_id)->portal->links.size();
+}
+
+TypedArray<Vector2i> AStarGrid2D::get_portal_points() const {
+	return portal_points;
+}
+
 AStarGrid2D::Point *AStarGrid2D::_jump(Point *p_from, Point *p_to) {
 	int32_t from_x = p_from->id.x;
 	int32_t from_y = p_from->id.y;
@@ -436,18 +582,22 @@ void AStarGrid2D::_get_nbors(Point *p_point, LocalVector<Point *> &r_nbors) {
 	}
 
 	if (top && !_get_solid_unchecked(top->id)) {
+		_make_portal_links(top, r_nbors);
 		r_nbors.push_back(top);
 		ts0 = true;
 	}
 	if (right && !_get_solid_unchecked(right->id)) {
+		_make_portal_links(right, r_nbors);
 		r_nbors.push_back(right);
 		ts1 = true;
 	}
 	if (bottom && !_get_solid_unchecked(bottom->id)) {
+		_make_portal_links(bottom, r_nbors);
 		r_nbors.push_back(bottom);
 		ts2 = true;
 	}
 	if (left && !_get_solid_unchecked(left->id)) {
+		_make_portal_links(left, r_nbors);
 		r_nbors.push_back(left);
 		ts3 = true;
 	}
@@ -478,15 +628,19 @@ void AStarGrid2D::_get_nbors(Point *p_point, LocalVector<Point *> &r_nbors) {
 	}
 
 	if (td0 && (top_left && !_get_solid_unchecked(top_left->id))) {
+		_make_portal_links(top_left, r_nbors);
 		r_nbors.push_back(top_left);
 	}
 	if (td1 && (top_right && !_get_solid_unchecked(top_right->id))) {
+		_make_portal_links(top_right, r_nbors);
 		r_nbors.push_back(top_right);
 	}
 	if (td2 && (bottom_right && !_get_solid_unchecked(bottom_right->id))) {
+		_make_portal_links(bottom_right, r_nbors);
 		r_nbors.push_back(bottom_right);
 	}
 	if (td3 && (bottom_left && !_get_solid_unchecked(bottom_left->id))) {
+		_make_portal_links(bottom_left, r_nbors);
 		r_nbors.push_back(bottom_left);
 	}
 }
@@ -536,7 +690,7 @@ bool AStarGrid2D::_solve(Point *p_begin_point, Point *p_end_point, bool p_allow_
 			real_t weight_scale = 1.0;
 
 			if (jumping_enabled) {
-				// TODO: Make it works with weight_scale.
+				// TODO: Make it works with weight_scale and portals.
 				e = _jump(p, e);
 				if (!e || e->closed_pass == pass) {
 					continue;
@@ -586,16 +740,22 @@ real_t AStarGrid2D::_estimate_cost(const Vector2i &p_from_id, const Vector2i &p_
 }
 
 real_t AStarGrid2D::_compute_cost(const Vector2i &p_from_id, const Vector2i &p_to_id) {
+	real_t portal_weight_scale = 0.0;
+	if (!jumping_enabled && portal_points.has(p_to_id)) {
+		portal_weight_scale = _get_point_unchecked(p_to_id.x, p_to_id.y)->portal->travel_weight_scale;
+	}
+
 	real_t scost;
 	if (GDVIRTUAL_CALL(_compute_cost, p_from_id, p_to_id, scost)) {
-		return scost;
+		return scost + portal_weight_scale;
 	}
-	return heuristics[default_compute_heuristic](p_from_id, p_to_id);
+	return heuristics[default_compute_heuristic](p_from_id, p_to_id) + portal_weight_scale;
 }
 
 void AStarGrid2D::clear() {
 	points.clear();
 	region = Rect2i();
+	portal_points.clear();
 }
 
 Vector2 AStarGrid2D::get_point_position(const Vector2i &p_id) const {
@@ -765,6 +925,21 @@ void AStarGrid2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("fill_solid_region", "region", "solid"), &AStarGrid2D::fill_solid_region, DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("fill_weight_scale_region", "region", "weight_scale"), &AStarGrid2D::fill_weight_scale_region);
 	ClassDB::bind_method(D_METHOD("clear"), &AStarGrid2D::clear);
+
+	ClassDB::bind_method(D_METHOD("add_portal", "id", "enabled", "travel_weight_scale"), &AStarGrid2D::add_portal, DEFVAL(true), DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("remove_portal", "id"), &AStarGrid2D::remove_portal);
+	ClassDB::bind_method(D_METHOD("connect_portals", "from_id", "to_id", "bidirectional"), &AStarGrid2D::connect_portals, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("connect_portal_to_point", "from_id", "to_id"), &AStarGrid2D::connect_portal_to_point);
+	ClassDB::bind_method(D_METHOD("disconnect_portals", "from_id", "to_id", "bidirectional"), &AStarGrid2D::disconnect_portals, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("disconnect_portal_from_point", "from_id", "to_id"), &AStarGrid2D::disconnect_portal_from_point);
+	ClassDB::bind_method(D_METHOD("is_portal_existed_at", "id"), &AStarGrid2D::is_portal_existed_at);
+	ClassDB::bind_method(D_METHOD("is_portal_connected_to", "from_id", "to_id"), &AStarGrid2D::is_portal_connected_to);
+	ClassDB::bind_method(D_METHOD("set_portal_disabled", "id", "disabled"), &AStarGrid2D::set_portal_disabled, DEFVAL(true));
+	ClassDB::bind_method(D_METHOD("is_portal_disabled", "id"), &AStarGrid2D::is_portal_disabled);
+	ClassDB::bind_method(D_METHOD("set_portal_travel_weight_scale", "id", "travel_weight_scale"), &AStarGrid2D::set_portal_travel_weight_scale, DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("get_portal_travel_weight_scale", "id"), &AStarGrid2D::get_portal_travel_weight_scale);
+	ClassDB::bind_method(D_METHOD("get_portal_connections_amount", "id"), &AStarGrid2D::get_portal_connections_amount);
+	ClassDB::bind_method(D_METHOD("get_portal_points"), &AStarGrid2D::get_portal_points);
 
 	ClassDB::bind_method(D_METHOD("get_point_position", "id"), &AStarGrid2D::get_point_position);
 	ClassDB::bind_method(D_METHOD("get_point_data_in_region", "region"), &AStarGrid2D::get_point_data_in_region);
