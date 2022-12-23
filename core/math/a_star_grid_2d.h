@@ -36,6 +36,8 @@
 #include "core/object/script_language.h"
 #include "core/templates/list.h"
 #include "core/templates/local_vector.h"
+#include "core/templates/rb_set.h"
+#include "core/variant/typed_array.h"
 
 class AStarGrid2D : public RefCounted {
 	GDCLASS(AStarGrid2D, RefCounted);
@@ -68,6 +70,17 @@ private:
 	Heuristic default_compute_heuristic = HEURISTIC_EUCLIDEAN;
 	Heuristic default_estimate_heuristic = HEURISTIC_EUCLIDEAN;
 
+	struct Portal {
+		RBSet<Vector2i> links;
+		bool enabled = true;
+		real_t travel_weight_scale = 1.0;
+
+		Portal() {}
+		Portal(bool p_enabled, real_t p_travel_weight_scale) :
+				enabled(p_enabled), travel_weight_scale(p_travel_weight_scale) {
+		}
+	};
+
 	struct Point {
 		Vector2i id;
 
@@ -82,10 +95,26 @@ private:
 		uint64_t open_pass = 0;
 		uint64_t closed_pass = 0;
 
+		Portal *portal = nullptr;
+
+		_FORCE_INLINE_ void add_portal(real_t p_travel_weight_scale) {
+			portal = memnew(Portal(true, p_travel_weight_scale));
+		}
+		_FORCE_INLINE_ void delete_portal() {
+			memdelete(portal);
+			portal = nullptr;
+		}
+
 		Point() {}
 
 		Point(const Vector2i &p_id, const Vector2 &p_pos) :
 				id(p_id), pos(p_pos) {}
+
+		~Point() {
+			if (portal != nullptr) {
+				delete_portal();
+			}
+		}
 	};
 
 	struct SortPoints {
@@ -101,6 +130,7 @@ private:
 	};
 
 	LocalVector<LocalVector<Point>> points;
+	TypedArray<Vector2i> portal_ids;
 	Point *end = nullptr;
 
 	uint64_t pass = 1;
@@ -125,6 +155,19 @@ private: // Internal routines.
 	}
 
 	void _get_nbors(Point *p_point, LocalVector<Point *> &r_nbors);
+	_FORCE_INLINE_ void _make_portal_links(Point *p_point, LocalVector<Point *> &r_list) {
+		if (!jumping_enabled && p_point->portal != nullptr && p_point->portal->enabled) {
+			for (const Vector2i &link : p_point->portal->links) {
+				Point *p = _get_point_unchecked(link.x, link.y);
+				if (!p->solid) {
+					if (p->portal != nullptr && !p->portal->enabled) {
+						continue;
+					}
+					r_list.push_back(p);
+				}
+			}
+		}
+	}
 	Point *_jump(Point *p_from, Point *p_to);
 	bool _solve(Point *p_begin_point, Point *p_end_point);
 
@@ -179,6 +222,22 @@ public:
 
 	void fill_solid_region(const Rect2i &p_region, bool p_solid = true);
 	void fill_weight_scale_region(const Rect2i &p_region, real_t p_weight_scale);
+
+	void add_portal(const Vector2i &p_id, real_t p_travel_weight_scale = 0.0);
+	void remove_portal(const Vector2i &p_id);
+	void connect_portals(const Vector2i &p_from_id, const Vector2i &p_to_id, bool p_bidirectional = true);
+	void connect_portal_to_point(const Vector2i &p_from_id, const Vector2i &p_to_id);
+	void disconnect_portals(const Vector2i &p_from_id, const Vector2i &p_to_id, bool p_bidirectional = true);
+	void disconnect_portal_from_point(const Vector2i &p_from_id, const Vector2i &p_to_id);
+	void clear_portal_connections(const Vector2i &p_id, bool p_bidirectional = true);
+	bool is_portal_existed_at(const Vector2i &p_id) const;
+	bool is_portal_connected_to(const Vector2i &p_portal_id, const Vector2i &p_target_id);
+	void set_portal_disabled(const Vector2i &p_id, bool p_disabled = true);
+	bool is_portal_disabled(const Vector2i &p_id) const;
+	void set_portal_travel_weight_scale(const Vector2i &p_id, real_t p_travel_weight_scale = 0.0);
+	real_t get_portal_travel_weight_scale(const Vector2i &p_id) const;
+	int get_portal_connections_amount(const Vector2i &p_id) const;
+	TypedArray<Vector2i> get_portals_location() const;
 
 	void clear();
 
