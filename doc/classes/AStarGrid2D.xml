@@ -108,6 +108,11 @@
 				Indicates that the grid parameters were changed and [method update] needs to be called.
 			</description>
 		</method>
+		<method name="is_hpa_dirty" qualifiers="const">
+			<return type="bool" />
+			<description>
+			</description>
+		</method>
 		<method name="is_in_bounds" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="x" type="int" />
@@ -155,6 +160,11 @@
 				[b]Note:[/b] All point data (solidity and weight scale) will be cleared.
 			</description>
 		</method>
+		<method name="update_hpa">
+			<return type="void" />
+			<description>
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="cell_size" type="Vector2" setter="set_cell_size" getter="get_cell_size" default="Vector2(1, 1)">
@@ -168,6 +178,12 @@
 		</member>
 		<member name="diagonal_mode" type="int" setter="set_diagonal_mode" getter="get_diagonal_mode" enum="AStarGrid2D.DiagonalMode" default="0">
 			A specific [enum DiagonalMode] mode which will force the path to avoid or accept the specified diagonals.
+		</member>
+		<member name="hpa_cluster_size" type="int" setter="set_cluster_size" getter="get_cluster_size" default="10">
+		</member>
+		<member name="hpa_enabled" type="bool" setter="set_hpa_enabled" getter="is_hpa_enabled" default="false">
+		</member>
+		<member name="hpa_max_level" type="int" setter="set_max_level" getter="get_max_level" default="1">
 		</member>
 		<member name="jumping_enabled" type="bool" setter="set_jumping_enabled" getter="is_jumping_enabled" default="false">
 			Enables or disables jumping to skip up the intermediate points and speeds up the searching algorithm.
