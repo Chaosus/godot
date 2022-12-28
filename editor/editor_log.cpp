@@ -389,6 +389,7 @@ EditorLog::EditorLog() {
 	log->set_v_size_flags(SIZE_EXPAND_FILL);
 	log->set_h_size_flags(SIZE_EXPAND_FILL);
 	log->set_deselect_on_focus_loss_enabled(false);
+	log->set_autowrap_mode(TextServer::AUTOWRAP_ARBITRARY);
 	vb_left->add_child(log);
 
 	// Search box
