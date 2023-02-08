@@ -1875,51 +1875,50 @@ Error VisualShader::_write_node(Type type, StringBuilder *p_global_code, StringB
 			}
 
 			Variant defval = vsnode->get_input_port_default_value(i);
-			if (defval.get_type() == Variant::FLOAT) {
-				float val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				node_code += "	float " + inputs[i] + " = " + vformat("%.5f", val) + ";\n";
-			} else if (defval.get_type() == Variant::INT) {
-				int val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				if (vsnode->get_input_port_type(i) == VisualShaderNode::PORT_TYPE_SCALAR_UINT) {
-					node_code += "	uint " + inputs[i] + " = " + itos(val) + "u;\n";
-				} else {
-					node_code += "	int " + inputs[i] + " = " + itos(val) + ";\n";
-				}
-			} else if (defval.get_type() == Variant::BOOL) {
-				bool val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				node_code += "	bool " + inputs[i] + " = " + (val ? "true" : "false") + ";\n";
-			} else if (defval.get_type() == Variant::VECTOR2) {
-				Vector2 val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				node_code += "	vec2 " + inputs[i] + " = " + vformat("vec2(%.5f, %.5f);\n", val.x, val.y);
-			} else if (defval.get_type() == Variant::VECTOR3) {
-				Vector3 val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				node_code += "	vec3 " + inputs[i] + " = " + vformat("vec3(%.5f, %.5f, %.5f);\n", val.x, val.y, val.z);
-			} else if (defval.get_type() == Variant::QUATERNION) {
-				Quaternion val = defval;
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				node_code += "	vec4 " + inputs[i] + " = " + vformat("vec4(%.5f, %.5f, %.5f, %.5f);\n", val.x, val.y, val.z, val.w);
-			} else if (defval.get_type() == Variant::TRANSFORM3D) {
-				Transform3D val = defval;
-				val.basis.transpose();
-				inputs[i] = "n_in" + itos(p_node) + "p" + itos(i);
-				Array values;
-				for (int j = 0; j < 3; j++) {
-					values.push_back(val.basis[j].x);
-					values.push_back(val.basis[j].y);
-					values.push_back(val.basis[j].z);
-				}
-				values.push_back(val.origin.x);
-				values.push_back(val.origin.y);
-				values.push_back(val.origin.z);
-				bool err = false;
-				node_code += "	mat4 " + inputs[i] + " = " + String("mat4(vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 1.0));\n").sprintf(values, &err);
-			} else {
-				//will go empty, node is expected to know what it is doing at this point and handle it
+
+			switch (defval.get_type()) {
+				case Variant::FLOAT: {
+					float val = defval;
+					inputs[i] = vformat("%.5f", val);
+				} break;
+				case Variant::INT: {
+					int val = defval;
+					inputs[i] = itos(val);
+					if (vsnode->get_input_port_type(i) == VisualShaderNode::PORT_TYPE_SCALAR_UINT) {
+						inputs[i] += "u";
+					}
+				} break;
+				case Variant::BOOL: {
+					bool val = defval;
+					inputs[i] = val ? "true" : "false";
+				} break;
+				case Variant::VECTOR2: {
+					Vector2 val = defval;
+					inputs[i] = vformat("vec2(%.5f, %.5f)", val.x, val.y);
+				} break;
+				case Variant::VECTOR3: {
+					Vector3 val = defval;
+					inputs[i] = vformat("vec3(%.5f, %.5f, %.5f)", val.x, val.y, val.z);
+				} break;
+				case Variant::QUATERNION: {
+					Quaternion val = defval;
+					inputs[i] = vformat("vec4(%.5f, %.5f, %.5f, %.5f)", val.x, val.y, val.z, val.w);
+				} break;
+				case Variant::TRANSFORM3D: {
+					Transform3D val = defval;
+					val.basis.transpose();
+					Array values;
+					for (int j = 0; j < 3; j++) {
+						values.push_back(val.basis[j].x);
+						values.push_back(val.basis[j].y);
+						values.push_back(val.basis[j].z);
+					}
+					values.push_back(val.origin.x);
+					values.push_back(val.origin.y);
+					values.push_back(val.origin.z);
+					bool err = false;
+					inputs[i] = String("mat4(vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 0.0), vec4(%.5f, %.5f, %.5f, 1.0))").sprintf(values, &err);
+				} break;
 			}
 		}
 	}
