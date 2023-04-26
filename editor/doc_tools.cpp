@@ -939,7 +939,10 @@ void DocTools::generate(bool p_basic_types) {
 			if (Variant::is_utility_function_vararg(E)) {
 				md.qualifiers = "vararg";
 			} else {
-				for (int i = 0; i < Variant::get_utility_function_argument_count(E); i++) {
+				int arg_count = Variant::get_utility_function_argument_count(E);
+				int def_arg_count = Variant::get_utility_function_default_argument_count(E);
+
+				for (int i = 0, j = 0; i < arg_count; i++) {
 					PropertyInfo pi;
 					pi.type = Variant::get_utility_function_argument_type(E, i);
 					pi.name = Variant::get_utility_function_argument_name(E, i);
@@ -948,6 +951,10 @@ void DocTools::generate(bool p_basic_types) {
 					}
 					DocData::ArgumentDoc ad;
 					DocData::argument_doc_from_arginfo(ad, pi);
+
+					if (i >= arg_count - def_arg_count) {
+						ad.default_value = DocData::get_default_value_string(Variant::get_utility_function_default_argument(E, j++));
+					}
 					md.arguments.push_back(ad);
 				}
 			}

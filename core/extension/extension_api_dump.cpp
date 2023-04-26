@@ -531,12 +531,16 @@ Dictionary GDExtensionAPIDump::generate_extension_api() {
 			func["hash"] = Variant::get_utility_function_hash(name);
 			Array arguments;
 			int argcount = Variant::get_utility_function_argument_count(name);
+			Vector<Variant> default_args = Variant::get_utility_function_default_arguments(name);
 			for (int i = 0; i < argcount; i++) {
 				Dictionary arg;
 				String argname = vararg ? "arg" + itos(i + 1) : Variant::get_utility_function_argument_name(name, i);
 				arg["name"] = argname;
 				arg["type"] = get_builtin_or_variant_type_name(Variant::get_utility_function_argument_type(name, i));
-				//no default value support in utility functions
+				if (i >= 0 && i >= (argcount - default_args.size())) {
+					int dargidx = i - (argcount - default_args.size());
+					arg["default_value"] = default_args[dargidx].get_construct_string();
+				}
 				arguments.push_back(arg);
 			}
 

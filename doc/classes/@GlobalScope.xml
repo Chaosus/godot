@@ -1032,8 +1032,8 @@
 		</method>
 		<method name="randfn">
 			<return type="float" />
-			<param index="0" name="mean" type="float" />
-			<param index="1" name="deviation" type="float" />
+			<param index="0" name="mean" type="float" default="0.0" />
+			<param index="1" name="deviation" type="float" default="1.0" />
 			<description>
 				Returns a normally-distributed pseudo-random floating point value using Box-Muller transform with the specified [param mean] and a standard [param deviation]. This is also called Gaussian distribution.
 			</description>

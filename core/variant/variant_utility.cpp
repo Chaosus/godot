@@ -1245,7 +1245,7 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 	return Variant::NIL;
 }
 
-#define FUNCBINDR(m_func, m_args, m_category)                                                                    \
+#define FUNCBINDR(m_func, m_args, m_defargs, m_category)                                                         \
 	class Func_##m_func {                                                                                        \
 	public:                                                                                                      \
 		static void call(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) { \
@@ -1272,9 +1272,9 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 		static bool is_vararg() { return false; }                                                                \
 		static Variant::UtilityFunctionType get_type() { return m_category; }                                    \
 	};                                                                                                           \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, m_defargs)
 
-#define FUNCBINDVR(m_func, m_args, m_category)                                                                          \
+#define FUNCBINDVR(m_func, m_args, m_defargs, m_category)                                                               \
 	class Func_##m_func {                                                                                               \
 	public:                                                                                                             \
 		static void call(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {        \
@@ -1304,9 +1304,9 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 		static bool is_vararg() { return false; }                                                                       \
 		static Variant::UtilityFunctionType get_type() { return m_category; }                                           \
 	};                                                                                                                  \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, m_defargs)
 
-#define FUNCBINDVR2(m_func, m_args, m_category)                                                                                    \
+#define FUNCBINDVR2(m_func, m_args, m_defargs, m_category)                                                                         \
 	class Func_##m_func {                                                                                                          \
 	public:                                                                                                                        \
 		static void call(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {                   \
@@ -1338,9 +1338,9 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 		static bool is_vararg() { return false; }                                                                                  \
 		static Variant::UtilityFunctionType get_type() { return m_category; }                                                      \
 	};                                                                                                                             \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, m_defargs)
 
-#define FUNCBINDVR3(m_func, m_args, m_category)                                                                                                                           \
+#define FUNCBINDVR3(m_func, m_args, m_defargs, m_category)                                                                                                                \
 	class Func_##m_func {                                                                                                                                                 \
 	public:                                                                                                                                                               \
 		static void call(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {                                                          \
@@ -1372,7 +1372,7 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 		static bool is_vararg() { return false; }                                                                                                                         \
 		static Variant::UtilityFunctionType get_type() { return m_category; }                                                                                             \
 	};                                                                                                                                                                    \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, m_defargs)
 
 #define FUNCBINDVARARG(m_func, m_args, m_category)                                                               \
 	class Func_##m_func {                                                                                        \
@@ -1417,7 +1417,7 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 			return m_category;                                                                                   \
 		}                                                                                                        \
 	};                                                                                                           \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, varray())
 
 #define FUNCBINDVARARGS(m_func, m_args, m_category)                                                              \
 	class Func_##m_func {                                                                                        \
@@ -1462,7 +1462,7 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 			return m_category;                                                                                   \
 		}                                                                                                        \
 	};                                                                                                           \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, varray())
 
 #define FUNCBINDVARARGV(m_func, m_args, m_category)                                                              \
 	class Func_##m_func {                                                                                        \
@@ -1506,9 +1506,9 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 			return m_category;                                                                                   \
 		}                                                                                                        \
 	};                                                                                                           \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, varray())
 
-#define FUNCBIND(m_func, m_args, m_category)                                                                     \
+#define FUNCBIND(m_func, m_args, m_defargs, m_category)                                                          \
 	class Func_##m_func {                                                                                        \
 	public:                                                                                                      \
 		static void call(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) { \
@@ -1535,13 +1535,14 @@ static _FORCE_INLINE_ Variant::Type get_ret_type_helper(void (*p_func)(P...)) {
 		static bool is_vararg() { return false; }                                                                \
 		static Variant::UtilityFunctionType get_type() { return m_category; }                                    \
 	};                                                                                                           \
-	register_utility_function<Func_##m_func>(#m_func, m_args)
+	register_utility_function<Func_##m_func>(#m_func, m_args, m_defargs)
 
 struct VariantUtilityFunctionInfo {
 	void (*call_utility)(Variant *r_ret, const Variant **p_args, int p_argcount, Callable::CallError &r_error) = nullptr;
 	Variant::ValidatedUtilityFunction validated_call_utility = nullptr;
 	Variant::PTRUtilityFunction ptr_call_utility = nullptr;
 	Vector<String> argnames;
+	Vector<Variant> defargs;
 	bool is_vararg = false;
 	bool returns_value = false;
 	int argcount = 0;
@@ -1554,7 +1555,7 @@ static OAHashMap<StringName, VariantUtilityFunctionInfo> utility_function_table;
 static List<StringName> utility_function_name_table;
 
 template <class T>
-static void register_utility_function(const String &p_name, const Vector<String> &argnames) {
+static void register_utility_function(const String &p_name, const Vector<String> &argnames, const Vector<Variant> &defargs) {
 	String name = p_name;
 	if (name.begins_with("_")) {
 		name = name.substr(1, name.length() - 1);
@@ -1571,7 +1572,11 @@ static void register_utility_function(const String &p_name, const Vector<String>
 	bfi.argcount = T::get_argument_count();
 	if (!bfi.is_vararg) {
 		ERR_FAIL_COND_MSG(argnames.size() != bfi.argcount, "wrong number of arguments binding utility function: " + name);
+		ERR_FAIL_COND_MSG(defargs.size() > argnames.size(), "wrong number of default arguments binding utility function: " + name);
+	} else {
+		ERR_FAIL_COND_MSG(!defargs.is_empty(), "defargs array must be empty for vararg utility function: " + name);
 	}
+	bfi.defargs = defargs;
 	bfi.get_arg_type = T::get_argument_type;
 	bfi.return_type = T::get_return_type();
 	bfi.type = T::get_type();
@@ -1584,124 +1589,124 @@ static void register_utility_function(const String &p_name, const Vector<String>
 void Variant::_register_variant_utility_functions() {
 	// Math
 
-	FUNCBINDR(sin, sarray("angle_rad"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cos, sarray("angle_rad"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(tan, sarray("angle_rad"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(sin, sarray("angle_rad"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cos, sarray("angle_rad"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(tan, sarray("angle_rad"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(sinh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cosh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(tanh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(sinh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cosh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(tanh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(asin, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(acos, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(atan, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(asin, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(acos, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(atan, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(atan2, sarray("y", "x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(atan2, sarray("y", "x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(asinh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(acosh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(atanh, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(asinh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(acosh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(atanh, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(sqrt, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(fmod, sarray("x", "y"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(fposmod, sarray("x", "y"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(posmod, sarray("x", "y"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(sqrt, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(fmod, sarray("x", "y"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(fposmod, sarray("x", "y"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(posmod, sarray("x", "y"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR(floor, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(floorf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(floori, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR(floor, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(floorf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(floori, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR(ceil, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(ceilf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(ceili, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR(ceil, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(ceilf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(ceili, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR(round, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(roundf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(roundi, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR(round, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(roundf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(roundi, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR(abs, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(absf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(absi, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR(abs, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(absf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(absi, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR(sign, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(signf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(signi, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR(sign, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(signf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(signi, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR2(snapped, sarray("x", "step"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(snappedf, sarray("x", "step"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(snappedi, sarray("x", "step"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR2(snapped, sarray("x", "step"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(snappedf, sarray("x", "step"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(snappedi, sarray("x", "step"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(pow, sarray("base", "exp"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(log, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(exp, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(pow, sarray("base", "exp"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(log, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(exp, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(is_nan, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(is_inf, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(is_nan, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(is_inf, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(is_equal_approx, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(is_zero_approx, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(is_finite, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(is_equal_approx, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(is_zero_approx, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(is_finite, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(ease, sarray("x", "curve"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(step_decimals, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(ease, sarray("x", "curve"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(step_decimals, sarray("x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR3(lerp, sarray("from", "to", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(lerpf, sarray("from", "to", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cubic_interpolate, sarray("from", "to", "pre", "post", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cubic_interpolate_angle, sarray("from", "to", "pre", "post", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cubic_interpolate_in_time, sarray("from", "to", "pre", "post", "weight", "to_t", "pre_t", "post_t"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(cubic_interpolate_angle_in_time, sarray("from", "to", "pre", "post", "weight", "to_t", "pre_t", "post_t"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(bezier_interpolate, sarray("start", "control_1", "control_2", "end", "t"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(bezier_derivative, sarray("start", "control_1", "control_2", "end", "t"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(lerp_angle, sarray("from", "to", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(inverse_lerp, sarray("from", "to", "weight"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(remap, sarray("value", "istart", "istop", "ostart", "ostop"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR3(lerp, sarray("from", "to", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(lerpf, sarray("from", "to", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cubic_interpolate, sarray("from", "to", "pre", "post", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cubic_interpolate_angle, sarray("from", "to", "pre", "post", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cubic_interpolate_in_time, sarray("from", "to", "pre", "post", "weight", "to_t", "pre_t", "post_t"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(cubic_interpolate_angle_in_time, sarray("from", "to", "pre", "post", "weight", "to_t", "pre_t", "post_t"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(bezier_interpolate, sarray("start", "control_1", "control_2", "end", "t"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(bezier_derivative, sarray("start", "control_1", "control_2", "end", "t"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(lerp_angle, sarray("from", "to", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(inverse_lerp, sarray("from", "to", "weight"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(remap, sarray("value", "istart", "istop", "ostart", "ostop"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(smoothstep, sarray("from", "to", "x"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(move_toward, sarray("from", "to", "delta"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(smoothstep, sarray("from", "to", "x"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(move_toward, sarray("from", "to", "delta"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(deg_to_rad, sarray("deg"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(rad_to_deg, sarray("rad"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(linear_to_db, sarray("lin"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(db_to_linear, sarray("db"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(deg_to_rad, sarray("deg"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(rad_to_deg, sarray("rad"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(linear_to_db, sarray("lin"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(db_to_linear, sarray("db"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR3(wrap, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(wrapi, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(wrapf, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR3(wrap, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(wrapi, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(wrapf, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
 	FUNCBINDVARARG(max, sarray(), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(maxi, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(maxf, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(maxi, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(maxf, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
 	FUNCBINDVARARG(min, sarray(), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(mini, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(minf, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(mini, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(minf, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDVR3(clamp, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(clampi, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(clampf, sarray("value", "min", "max"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDVR3(clamp, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(clampi, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(clampf, sarray("value", "min", "max"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
-	FUNCBINDR(nearest_po2, sarray("value"), Variant::UTILITY_FUNC_TYPE_MATH);
-	FUNCBINDR(pingpong, sarray("value", "length"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(nearest_po2, sarray("value"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(pingpong, sarray("value", "length"), varray(), Variant::UTILITY_FUNC_TYPE_MATH);
 
 	// Random
 
-	FUNCBIND(randomize, sarray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(randi, sarray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(randf, sarray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(randi_range, sarray("from", "to"), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(randf_range, sarray("from", "to"), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(randfn, sarray("mean", "deviation"), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBIND(seed, sarray("base"), Variant::UTILITY_FUNC_TYPE_RANDOM);
-	FUNCBINDR(rand_from_seed, sarray("seed"), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBIND(randomize, sarray(), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(randi, sarray(), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(randf, sarray(), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(randi_range, sarray("from", "to"), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(randf_range, sarray("from", "to"), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(randfn, sarray("mean", "deviation"), varray(0.0, 1.0), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBIND(seed, sarray("base"), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
+	FUNCBINDR(rand_from_seed, sarray("seed"), varray(), Variant::UTILITY_FUNC_TYPE_RANDOM);
 
 	// Utility
 
-	FUNCBINDVR(weakref, sarray("obj"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(_typeof, sarray("variable"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(type_convert, sarray("variant", "type"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDVR(weakref, sarray("obj"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(_typeof, sarray("variable"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(type_convert, sarray("variant", "type"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 	FUNCBINDVARARGS(str, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(error_string, sarray("error"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(error_string, sarray("error"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 	FUNCBINDVARARGV(print, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 	FUNCBINDVARARGV(print_rich, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 	FUNCBINDVARARGV(printerr, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
@@ -1712,25 +1717,25 @@ void Variant::_register_variant_utility_functions() {
 	FUNCBINDVARARGV(push_error, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 	FUNCBINDVARARGV(push_warning, sarray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(var_to_str, sarray("variable"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(str_to_var, sarray("string"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(var_to_str, sarray("variable"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(str_to_var, sarray("string"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(var_to_bytes, sarray("variable"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(bytes_to_var, sarray("bytes"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(var_to_bytes, sarray("variable"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(bytes_to_var, sarray("bytes"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(var_to_bytes_with_objects, sarray("variable"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(bytes_to_var_with_objects, sarray("bytes"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(var_to_bytes_with_objects, sarray("variable"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(bytes_to_var_with_objects, sarray("bytes"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(hash, sarray("variable"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(hash, sarray("variable"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(instance_from_id, sarray("instance_id"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(is_instance_id_valid, sarray("id"), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(is_instance_valid, sarray("instance"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(instance_from_id, sarray("instance_id"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(is_instance_id_valid, sarray("id"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(is_instance_valid, sarray("instance"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(rid_allocate_id, Vector<String>(), Variant::UTILITY_FUNC_TYPE_GENERAL);
-	FUNCBINDR(rid_from_int64, sarray("base"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(rid_allocate_id, Vector<String>(), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(rid_from_int64, sarray("base"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 
-	FUNCBINDR(is_same, sarray("a", "b"), Variant::UTILITY_FUNC_TYPE_GENERAL);
+	FUNCBINDR(is_same, sarray("a", "b"), varray(), Variant::UTILITY_FUNC_TYPE_GENERAL);
 }
 
 void Variant::_unregister_variant_utility_functions() {
@@ -1750,7 +1755,7 @@ void Variant::call_utility_function(const StringName &p_name, Variant *r_ret, co
 	if (unlikely(!bfi->is_vararg && p_argcount < bfi->argcount)) {
 		r_error.error = Callable::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS;
 		r_error.argument = 0;
-		r_error.expected = bfi->argcount;
+		r_error.expected = bfi->argcount - bfi->defargs.size();
 		return;
 	}
 
@@ -1813,6 +1818,9 @@ MethodInfo Variant::get_utility_function_info(const StringName &p_name) {
 			arg.name = bfi->argnames[i];
 			info.arguments.push_back(arg);
 		}
+		for (int i = 0; i < bfi->defargs.size(); ++i) {
+			info.default_arguments.push_back(bfi->defargs[i]);
+		}
 	}
 	return info;
 }
@@ -1824,6 +1832,35 @@ int Variant::get_utility_function_argument_count(const StringName &p_name) {
 	}
 
 	return bfi->argcount;
+}
+
+int Variant::get_utility_function_default_argument_count(const StringName &p_name) {
+	const VariantUtilityFunctionInfo *bfi = utility_function_table.lookup_ptr(p_name);
+	if (!bfi) {
+		return 0;
+	}
+
+	ERR_FAIL_COND_V(bfi->is_vararg, 0);
+	return bfi->defargs.size();
+}
+
+Variant Variant::get_utility_function_default_argument(const StringName &p_name, int p_arg) {
+	const VariantUtilityFunctionInfo *bfi = utility_function_table.lookup_ptr(p_name);
+	if (!bfi) {
+		return Variant();
+	}
+	ERR_FAIL_INDEX_V(p_arg, bfi->defargs.size(), Variant());
+	ERR_FAIL_COND_V(bfi->is_vararg, Variant());
+	return bfi->defargs[p_arg];
+}
+
+Vector<Variant> Variant::get_utility_function_default_arguments(const StringName &p_name) {
+	const VariantUtilityFunctionInfo *bfi = utility_function_table.lookup_ptr(p_name);
+	if (!bfi) {
+		return Variant();
+	}
+	ERR_FAIL_COND_V(bfi->is_vararg, Variant());
+	return bfi->defargs;
 }
 
 Variant::Type Variant::get_utility_function_argument_type(const StringName &p_name, int p_arg) {

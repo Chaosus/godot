@@ -77,6 +77,9 @@ static MethodInfo info_from_utility_func(const StringName &p_function) {
 			pi.type = Variant::get_utility_function_argument_type(p_function, i);
 			info.arguments.push_back(pi);
 		}
+		for (int i = 0; i < Variant::get_utility_function_default_argument_count(p_function); i++) {
+			info.default_arguments.push_back(Variant::get_utility_function_default_argument(p_function, i));
+		}
 	}
 
 	return info;
@@ -3095,6 +3098,17 @@ void GDScriptAnalyzer::reduce_call(GDScriptParser::CallNode *p_call, bool p_is_a
 				Vector<const Variant *> args;
 				for (int i = 0; i < p_call->arguments.size(); i++) {
 					args.push_back(&(p_call->arguments[i]->reduced_value));
+				}
+
+				// Try fill it with the default arguments.
+				if (!function_info.default_arguments.is_empty() && args.size() < function_info.arguments.size()) {
+					int start_count = args.size() - (function_info.arguments.size() - function_info.default_arguments.size());
+
+					if (args.size() >= start_count) { // Tests if enough argument till default values started.
+						for (int i = args.size(), j = start_count; i < function_info.arguments.size(); i++) {
+							args.push_back(&function_info.default_arguments[j++]);
+						}
+					}
 				}
 
 				Variant value;
