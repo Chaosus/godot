@@ -49,6 +49,11 @@ void LineBuilder::build() {
 		colors.clear();
 		indices.clear();
 		uvs.clear();
+
+		vertices_aa.clear();
+		colors_aa.clear();
+		indices_aa.clear();
+		uvs_aa.clear();
 		return;
 	}
 
@@ -116,6 +121,7 @@ void LineBuilder::build() {
 		color0 = gradient->get_color(0);
 	} else {
 		colors.push_back(default_color);
+		color0 = default_color;
 	}
 
 	float uvx0 = 0.f;
@@ -127,12 +133,87 @@ void LineBuilder::build() {
 	// Begin cap
 	if (!wrap_around) {
 		if (begin_cap_mode == Line2D::LINE_CAP_BOX) {
+			Vector2 prev_pos_up0 = pos_up0;
+			Vector2 prev_pos_down0 = pos_down0;
+
 			// Push back first vertices a little bit.
 			pos_up0 -= f0 * modified_hw;
 			pos_down0 -= f0 * modified_hw;
 
 			current_distance0 += modified_hw;
 			current_distance1 = current_distance0;
+
+			if (antialiased) {
+				int vi = vertices_aa.size();
+				Color color2 = Color(color0, 0);
+
+				{
+					// Left side border.
+
+					Vector2 p1 = prev_pos_down0;
+					Vector2 p2 = pos_down0;
+					Vector2 dir = (p1 - p2).orthogonal().normalized();
+					Vector2 t = (dir * 0.25);
+
+					vertices_aa.push_back(p1);
+					vertices_aa.push_back(p1 - t);
+					vertices_aa.push_back(p2);
+					vertices_aa.push_back(p2 - t);
+
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+
+					if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+						if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
+							uvs_aa.push_back(Vector2(0.5f, 1.f));
+							uvs_aa.push_back(Vector2(0.5f, 1.f));
+						} else { // Stretch.
+							uvs_aa.push_back(Vector2(width * width_factor / total_distance * 0.5f, 1.f));
+							uvs_aa.push_back(Vector2(width * width_factor / total_distance * 0.5f, 1.f));
+						}
+						uvs_aa.push_back(Vector2(0.f, 1.f));
+						uvs_aa.push_back(Vector2(0.f, 1.f));
+					}
+
+					push_aa_indexes(vi);
+				}
+
+				{
+					// Right side border.
+
+					Vector2 p1 = prev_pos_up0;
+					Vector2 p2 = pos_up0;
+					Vector2 dir = (p1 - p2).orthogonal().normalized();
+					Vector2 t = (dir * 0.25);
+
+					vertices_aa.push_back(p1);
+					vertices_aa.push_back(p1 + t);
+					vertices_aa.push_back(p2);
+					vertices_aa.push_back(p2 + t);
+
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+
+					if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+						if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
+							uvs_aa.push_back(Vector2(0.5f, 0.f));
+							uvs_aa.push_back(Vector2(0.5f, 0.f));
+						} else { // Stretch.
+							uvs_aa.push_back(Vector2(width * width_factor / total_distance * 0.5f, 0.f));
+							uvs_aa.push_back(Vector2(width * width_factor / total_distance * 0.5f, 0.f));
+						}
+						uvs_aa.push_back(Vector2());
+						uvs_aa.push_back(Vector2());
+					}
+
+					push_aa_indexes(vi + 4);
+				}
+			}
+
 		} else if (begin_cap_mode == Line2D::LINE_CAP_ROUND) {
 			if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
 				uvx0 = width_factor * 0.5f / tile_aspect;
@@ -144,6 +225,80 @@ void LineBuilder::build() {
 			current_distance1 = current_distance0;
 		}
 		strip_begin(pos_up0, pos_down0, color0, uvx0);
+	}
+
+	if (antialiased && (begin_cap_mode != Line2D::LINE_CAP_ROUND || round_precision == 1)) {
+		int vi = vertices_aa.size();
+
+		Color color2 = Color(color0, 0);
+		Vector2 dir = (pos_up0 - pos_down0).orthogonal().normalized();
+		Vector2 dir2 = (pos_up0 - pos_down0).normalized();
+		Vector2 t = (dir * 0.25);
+		Vector2 t2 = (dir2 * 0.25);
+		Vector2 left = pos_up0 - dir2 * width;
+
+		// Begin side.
+
+		vertices_aa.push_back(pos_up0);
+		vertices_aa.push_back(pos_up0 + t);
+		vertices_aa.push_back(pos_down0);
+		vertices_aa.push_back(pos_down0 + t);
+
+		colors_aa.push_back(color0);
+		colors_aa.push_back(color2);
+		colors_aa.push_back(color0);
+		colors_aa.push_back(color2);
+
+		if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+		}
+
+		push_aa_indexes(vi);
+
+		// Left corner.
+
+		vertices_aa.push_back(left - t2);
+		vertices_aa.push_back(left);
+		vertices_aa.push_back(left + t - t2);
+		vertices_aa.push_back(left + t);
+
+		colors_aa.push_back(color2);
+		colors_aa.push_back(color0);
+		colors_aa.push_back(color2);
+		colors_aa.push_back(color2);
+
+		if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+			uvs_aa.push_back(Vector2(0.f, 1.f));
+		}
+
+		push_aa_indexes(vi + 4);
+
+		// Right corner.
+
+		vertices_aa.push_back(pos_up0 + t2);
+		vertices_aa.push_back(pos_up0);
+		vertices_aa.push_back(pos_up0 + t + t2);
+		vertices_aa.push_back(pos_up0 + t);
+
+		colors_aa.push_back(color2);
+		colors_aa.push_back(color0);
+		colors_aa.push_back(color2);
+		colors_aa.push_back(color2);
+
+		if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+		}
+
+		push_aa_indexes(vi + 8);
 	}
 
 	/*
@@ -169,6 +324,14 @@ void LineBuilder::build() {
 	// If the line wraps around, these variables will be used for the final segment.
 	Vector2 first_pos_up, first_pos_down;
 	bool is_first_joint_sharp = false;
+	bool is_last_bevel_corner = false;
+	Vector2 last_side, last_side2;
+
+	if (_interpolate_color) {
+		color1 = gradient->get_color_at_offset(current_distance1 / total_distance);
+	} else {
+		color1 = default_color;
+	}
 
 	// For each additional segment
 	for (int i = first_point; i <= segments_count; ++i) {
@@ -187,6 +350,8 @@ void LineBuilder::build() {
 		}
 		if (_interpolate_color) {
 			color1 = gradient->get_color_at_offset(current_distance1 / total_distance);
+		} else {
+			color1 = default_color;
 		}
 		if (retrieve_curve) {
 			width_factor = curve->sample_baked(current_distance1 / total_distance);
@@ -280,6 +445,100 @@ void LineBuilder::build() {
 			uvx1 = current_distance1 / total_distance;
 		}
 
+		Vector2 first_left_side;
+		Vector2 first_right_side;
+		Vector2 last_left_side;
+		Vector2 last_right_side;
+
+#ifdef OTHER
+		if (antialiased) {
+			int vi = vertices_aa.size();
+			Color color2 = Color(color1, 0);
+
+			{
+				// Left side border.
+
+				Vector2 p1 = pos0 - u0 * hw * width_factor;
+				Vector2 p2 = pos1 - u0 * hw * width_factor;
+				Vector2 dir = (p1 - p2).orthogonal().normalized();
+				Vector2 t = (dir * 0.25);
+
+				first_left_side = p1 + t;
+				last_left_side = p2 + t;
+
+				vertices_aa.push_back(p1);
+				vertices_aa.push_back(p1 + t);
+				vertices_aa.push_back(p2);
+				vertices_aa.push_back(p2 + t);
+
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+
+				push_aa_indexes(vi);
+			}
+
+			{
+				// Right side border.
+
+				Vector2 p1 = pos0 + u0 * hw * width_factor;
+				Vector2 p2 = pos1 + u0 * hw * width_factor;
+				Vector2 dir = (p1 - p2).orthogonal().normalized();
+				Vector2 t = (dir * 0.25);
+
+				first_right_side = p1 - t;
+				last_right_side = p2 - t;
+
+				vertices_aa.push_back(p1);
+				vertices_aa.push_back(p1 - t);
+				vertices_aa.push_back(p2);
+				vertices_aa.push_back(p2 - t);
+
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+
+				push_aa_indexes(vi + 4);
+			}
+
+			if (is_last_bevel_corner) {
+				vi = vertices_aa.size();
+
+				// Second corner.
+
+				vertices_aa.push_back(orientation == UP ? first_right_side : first_left_side);
+				vertices_aa.push_back(last_side);
+				vertices_aa.push_back(last_side2);
+
+				colors_aa.push_back(color2);
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+
+				indices_aa.push_back(vi);
+				indices_aa.push_back(vi + 1);
+				indices_aa.push_back(vi + 2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+
+				is_last_bevel_corner = false;
+			}
+		}
+#endif
+
 		// Swap vars for use in the next line.
 		color0 = color1;
 		u0 = u1;
@@ -339,17 +598,76 @@ void LineBuilder::build() {
 			 *             |     |
 			 */
 
-			Vector2 cbegin, cend;
+			Vector2 cbegin, cend, last;
 			if (orientation == UP) {
 				cbegin = pos_down1;
 				cend = pos_down0;
+				last = last_left_side;
 			} else {
 				cbegin = pos_up1;
 				cend = pos_up0;
+				last = last_right_side;
 			}
 
 			if (current_joint_mode == Line2D::LINE_JOINT_BEVEL && !(wrap_around && i == segments_count)) {
 				strip_add_tri(cend, orientation);
+#ifdef OTHER
+				if (antialiased) {
+					is_last_bevel_corner = true;
+
+					int vi = vertices_aa.size();
+					Color color2 = Color(color1, 0);
+					{
+						Vector2 p1 = cbegin;
+						Vector2 p2 = cend;
+						Vector2 dir = (p1 - p2).orthogonal().normalized();
+						Vector2 t = (orientation == Orientation::UP ? 1.0 : -1.0) * (dir * 0.25);
+
+						{
+							// First corner.
+
+							vertices_aa.push_back(last);
+							vertices_aa.push_back(p1);
+							vertices_aa.push_back(p1 + t);
+
+							colors_aa.push_back(color2);
+							colors_aa.push_back(color1);
+							colors_aa.push_back(color2);
+
+							indices_aa.push_back(vi);
+							indices_aa.push_back(vi + 1);
+							indices_aa.push_back(vi + 2);
+
+							uvs_aa.push_back(Vector2());
+							uvs_aa.push_back(Vector2());
+							uvs_aa.push_back(Vector2());
+
+							vi = vertices_aa.size();
+						}
+
+						vertices_aa.push_back(p1);
+						vertices_aa.push_back(p1 + t);
+						vertices_aa.push_back(p2);
+						vertices_aa.push_back(p2 + t);
+
+						colors_aa.push_back(color1);
+						colors_aa.push_back(color2);
+						colors_aa.push_back(color1);
+						colors_aa.push_back(color2);
+
+						uvs_aa.push_back(Vector2());
+						uvs_aa.push_back(Vector2());
+						uvs_aa.push_back(Vector2());
+						uvs_aa.push_back(Vector2());
+
+						push_aa_indexes(vi);
+
+						last_side = p2;
+						last_side2 = p2 + t;
+					}
+				}
+#endif
+
 			} else if (current_joint_mode == Line2D::LINE_JOINT_ROUND && !(wrap_around && i == segments_count)) {
 				Vector2 vbegin = cbegin - pos1;
 				Vector2 vend = cend - pos1;
@@ -366,7 +684,7 @@ void LineBuilder::build() {
 					cross_product = 0.f;
 				}
 				float angle_delta = Math::atan2(cross_product, dot_product);
-				strip_add_arc(pos1, angle_delta, orientation);
+				strip_add_arc(pos1, color0, angle_delta, orientation);
 			}
 
 			if (!is_intersecting) {
@@ -376,11 +694,66 @@ void LineBuilder::build() {
 			}
 		}
 	}
-
 	// Draw the last (or only) segment, with its end cap logic.
 	if (!wrap_around) {
 		pos1 = points[point_count - 1];
+#ifdef OTHER
+		if (antialiased) {
+			int vi = vertices_aa.size();
+			Color color2 = Color(color1, 0);
+			{
+				// Left side border.
 
+				Vector2 p1 = pos0 - u0 * hw * width_factor;
+				Vector2 p2 = pos1 - u0 * hw * width_factor;
+				Vector2 dir = (p1 - p2).orthogonal().normalized();
+				Vector2 t = (dir * 0.25);
+
+				vertices_aa.push_back(p1);
+				vertices_aa.push_back(p1 + t);
+				vertices_aa.push_back(p2);
+				vertices_aa.push_back(p2 + t);
+
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+
+				push_aa_indexes(vi);
+			}
+
+			{
+				// Right side border.
+
+				Vector2 p1 = pos0 + u0 * hw * width_factor;
+				Vector2 p2 = pos1 + u0 * hw * width_factor;
+				Vector2 dir = (p1 - p2).orthogonal().normalized();
+				Vector2 t = (dir * 0.25);
+
+				vertices_aa.push_back(p1);
+				vertices_aa.push_back(p1 - t);
+				vertices_aa.push_back(p2);
+				vertices_aa.push_back(p2 - t);
+
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+				colors_aa.push_back(color1);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+
+				push_aa_indexes(vi + 4);
+			}
+		}
+#endif
 		if (distance_required) {
 			current_distance1 += pos0.distance_to(pos1);
 		}
@@ -397,10 +770,71 @@ void LineBuilder::build() {
 
 		// Add extra distance for a box end cap.
 		if (end_cap_mode == Line2D::LINE_CAP_BOX) {
+			Vector2 prev_pos_up1 = pos_up1;
+			Vector2 prev_pos_down1 = pos_down1;
+
 			pos_up1 += f0 * modified_hw;
 			pos_down1 += f0 * modified_hw;
 
 			current_distance1 += modified_hw;
+#ifdef OTHER
+			if (antialiased) {
+				int vi = vertices_aa.size();
+				Color color2 = Color(color0, 0);
+
+				{
+					// Left side border.
+
+					Vector2 p1 = prev_pos_down1;
+					Vector2 p2 = pos_down1;
+					Vector2 dir = (p1 - p2).orthogonal().normalized();
+					Vector2 t = (dir * 0.25);
+
+					vertices_aa.push_back(p1);
+					vertices_aa.push_back(p1 + t);
+					vertices_aa.push_back(p2);
+					vertices_aa.push_back(p2 + t);
+
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+
+					push_aa_indexes(vi);
+				}
+
+				{
+					// Right side border.
+
+					Vector2 p1 = prev_pos_up1;
+					Vector2 p2 = pos_up1;
+					Vector2 dir = (p1 - p2).orthogonal().normalized();
+					Vector2 t = (dir * 0.25);
+
+					vertices_aa.push_back(p1);
+					vertices_aa.push_back(p1 - t);
+					vertices_aa.push_back(p2);
+					vertices_aa.push_back(p2 - t);
+
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+					colors_aa.push_back(color0);
+					colors_aa.push_back(color2);
+
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+					uvs_aa.push_back(Vector2());
+
+					push_aa_indexes(vi + 4);
+				}
+			}
+#endif
 		}
 
 		if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
@@ -413,8 +847,7 @@ void LineBuilder::build() {
 
 		// Custom drawing for a round end cap.
 		if (end_cap_mode == Line2D::LINE_CAP_ROUND) {
-			// Note: color is not used in case we don't interpolate.
-			Color color = _interpolate_color ? gradient->get_color(gradient->get_point_count() - 1) : Color(0, 0, 0);
+			Color color = _interpolate_color ? gradient->get_color(gradient->get_point_count() - 1) : default_color;
 			float dist = 0;
 			if (texture_mode == Line2D::LINE_TEXTURE_TILE) {
 				dist = width_factor / tile_aspect;
@@ -423,7 +856,90 @@ void LineBuilder::build() {
 			}
 			new_arc(pos1, pos_up1 - pos1, Math_PI, color, Rect2(uvx1 - 0.5f * dist, 0.f, dist, 1.f));
 		}
+
+		if (antialiased && (end_cap_mode != Line2D::LINE_CAP_ROUND || round_precision == 1)) {
+			int vi = vertices_aa.size();
+			Color color2 = Color(color1, 0);
+
+			Vector2 dir = (pos_down1 - pos_up1).orthogonal().normalized();
+			Vector2 dir2 = (pos_down1 - pos_up1).normalized();
+			Vector2 t = (dir * 0.25);
+			Vector2 t2 = (dir2 * 0.25);
+			Vector2 left = pos_up1 + dir2 * width;
+
+			// End border.
+
+			vertices_aa.push_back(pos_up1);
+			vertices_aa.push_back(pos_up1 + t);
+			vertices_aa.push_back(pos_down1);
+			vertices_aa.push_back(pos_down1 + t);
+
+			colors_aa.push_back(color1);
+			colors_aa.push_back(color2);
+			colors_aa.push_back(color1);
+			colors_aa.push_back(color2);
+
+			if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+			}
+
+			push_aa_indexes(vi);
+
+			// Left corner.
+
+			vertices_aa.push_back(left + t2);
+			vertices_aa.push_back(left);
+			vertices_aa.push_back(left + t + t2);
+			vertices_aa.push_back(left + t);
+
+			colors_aa.push_back(color2);
+			colors_aa.push_back(color1);
+			colors_aa.push_back(color2);
+			colors_aa.push_back(color2);
+
+			if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+				uvs_aa.push_back(Vector2(1.f, 1.f));
+			}
+
+			push_aa_indexes(vi + 4);
+
+			// Right corner.
+
+			vertices_aa.push_back(pos_up1 - t2);
+			vertices_aa.push_back(pos_up1);
+			vertices_aa.push_back(pos_up1 + t - t2);
+			vertices_aa.push_back(pos_up1 + t);
+
+			colors_aa.push_back(color2);
+			colors_aa.push_back(color1);
+			colors_aa.push_back(color2);
+			colors_aa.push_back(color2);
+
+			if (texture_mode != Line2D::LINE_TEXTURE_NONE) {
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+				uvs_aa.push_back(Vector2(1.f, 0.f));
+			}
+
+			push_aa_indexes(vi + 8);
+		}
 	}
+}
+
+void LineBuilder::push_aa_indexes(int p_index) {
+	indices_aa.push_back(p_index);
+	indices_aa.push_back(p_index + 1);
+	indices_aa.push_back(p_index + 2);
+	indices_aa.push_back(p_index + 3);
+	indices_aa.push_back(p_index + 2);
+	indices_aa.push_back(p_index + 1);
 }
 
 void LineBuilder::strip_begin(Vector2 up, Vector2 down, Color color, float uvx) {
@@ -497,7 +1013,7 @@ void LineBuilder::strip_add_tri(Vector2 up, Orientation orientation) {
 	_last_index[opposite_orientation] = vi;
 }
 
-void LineBuilder::strip_add_arc(Vector2 center, float angle_delta, Orientation orientation) {
+void LineBuilder::strip_add_arc(Vector2 center, Color color, float angle_delta, Orientation orientation) {
 	// Take the two last vertices and extrude an arc made of triangles
 	// that all share one of the initial vertices
 
@@ -506,6 +1022,7 @@ void LineBuilder::strip_add_arc(Vector2 center, float angle_delta, Orientation o
 	float radius = vbegin.length();
 	float angle_step = Math_PI / static_cast<float>(round_precision);
 	float steps = Math::abs(angle_delta) / angle_step;
+	float border_size = 0.25f;
 
 	if (angle_delta < 0.f) {
 		angle_step = -angle_step;
@@ -514,11 +1031,51 @@ void LineBuilder::strip_add_arc(Vector2 center, float angle_delta, Orientation o
 	float t = Vector2(1, 0).angle_to(vbegin);
 	float end_angle = t + angle_delta;
 	Vector2 rpos(0, 0);
+	Color color2 = Color(color, 0);
 
-	// Arc vertices
+	// Arc vertices.
 	for (int ti = 0; ti < steps; ++ti, t += angle_step) {
-		rpos = center + Vector2(Math::cos(t), Math::sin(t)) * radius;
+		Vector2 sc = Vector2(Math::cos(t), Math::sin(t));
+		rpos = center + sc * radius;
 		strip_add_tri(rpos, orientation);
+#ifdef OTHER
+		if (antialiased) {
+			int current_idx = vertices_aa.size();
+			int vi = vertices_aa.size();
+
+			vertices_aa.push_back(rpos);
+			vertices_aa.push_back(rpos + sc * border_size);
+
+			colors_aa.push_back(color);
+			colors_aa.push_back(color2);
+
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+
+			if (ti > 0) {
+				vertices_aa.push_back(vertices_aa[current_idx]);
+				vertices_aa.push_back(vertices_aa[current_idx + 1]);
+
+				colors_aa.push_back(color);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+			}
+
+			for (int ti = 0; ti < steps; ++ti) {
+				indices_aa.push_back(vi);
+				indices_aa.push_back(vi + 1);
+				indices_aa.push_back(vi + 2);
+
+				indices_aa.push_back(vi + 3);
+				indices_aa.push_back(vi + 1);
+				indices_aa.push_back(vi + 2);
+
+				vi += 4;
+			}
+		}
+#endif
 	}
 
 	// Last arc vertex
@@ -528,11 +1085,12 @@ void LineBuilder::strip_add_arc(Vector2 center, float angle_delta, Orientation o
 
 void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Color color, Rect2 uv_rect) {
 	// Make a standalone arc that doesn't use existing vertices,
-	// with undistorted UVs from within a square section
+	// with undistorted UVs from within a square section.
 
 	float radius = vbegin.length();
 	float angle_step = Math_PI / static_cast<float>(round_precision);
 	float steps = Math::abs(angle_delta) / angle_step;
+	float border_size = 0.25f;
 
 	if (angle_delta < 0.f) {
 		angle_step = -angle_step;
@@ -543,9 +1101,11 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 	Vector2 rpos(0, 0);
 	float tt_begin = -Math_PI / 2.0f;
 	float tt = tt_begin;
+	Color color2 = Color(color, 0.0);
+	const int vi_base = vertices.size();
+	const int vi_base_aa = vertices_aa.size();
 
-	// Center vertice
-	int vi = vertices.size();
+	// Center vertices.
 	vertices.push_back(center);
 	if (_interpolate_color) {
 		colors.push_back(color);
@@ -554,7 +1114,7 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 		uvs.push_back(interpolate(uv_rect, Vector2(0.5f, 0.5f)));
 	}
 
-	// Arc vertices
+	// Arc vertices.
 	for (int ti = 0; ti < steps; ++ti, t += angle_step) {
 		Vector2 sc = Vector2(Math::cos(t), Math::sin(t));
 		rpos = center + sc * radius;
@@ -568,9 +1128,34 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 			uvs.push_back(interpolate(uv_rect, 0.5f * (tsc + Vector2(1.f, 1.f))));
 			tt += angle_step;
 		}
+#ifdef OTHER
+		if (antialiased) {
+			int current_idx = vertices_aa.size();
+
+			vertices_aa.push_back(rpos);
+			vertices_aa.push_back(rpos + sc * border_size);
+
+			colors_aa.push_back(color);
+			colors_aa.push_back(color2);
+
+			uvs_aa.push_back(Vector2());
+			uvs_aa.push_back(Vector2());
+
+			if (ti > 0) {
+				vertices_aa.push_back(vertices_aa[current_idx]);
+				vertices_aa.push_back(vertices_aa[current_idx + 1]);
+
+				colors_aa.push_back(color);
+				colors_aa.push_back(color2);
+
+				uvs_aa.push_back(Vector2());
+				uvs_aa.push_back(Vector2());
+			}
+		}
+#endif
 	}
 
-	// Last arc vertex
+	// Last arc vertex.
 	Vector2 sc = Vector2(Math::cos(end_angle), Math::sin(end_angle));
 	rpos = center + sc * radius;
 	vertices.push_back(rpos);
@@ -583,11 +1168,28 @@ void LineBuilder::new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Col
 		uvs.push_back(interpolate(uv_rect, 0.5f * (tsc + Vector2(1.f, 1.f))));
 	}
 
-	// Make up triangles
+	// Make up triangles.
+	int vi = vi_base;
 	int vi0 = vi;
 	for (int ti = 0; ti < steps; ++ti) {
 		indices.push_back(vi0);
 		indices.push_back(++vi);
 		indices.push_back(vi + 1);
 	}
+#ifdef OTHER
+	if (antialiased) {
+		vertices_aa.push_back(rpos);
+		vertices_aa.push_back(rpos + sc * border_size);
+		colors_aa.push_back(color);
+		colors_aa.push_back(color2);
+		uvs_aa.push_back(Vector2());
+		uvs_aa.push_back(Vector2());
+
+		vi = vi_base_aa;
+		for (int ti = 0; ti < steps; ++ti) {
+			push_aa_indexes(vi);
+			vi += 4;
+		}
+	}
+#endif
 }

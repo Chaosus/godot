@@ -290,6 +290,7 @@ void Line2D::_draw() {
 	lb.sharp_limit = _sharp_limit;
 	lb.width = _width;
 	lb.curve = *_curve;
+	lb.antialiased = _antialiased;
 
 	RID texture_rid;
 	if (_texture.is_valid()) {
@@ -307,6 +308,16 @@ void Line2D::_draw() {
 			lb.colors,
 			lb.uvs, Vector<int>(), Vector<float>(),
 			texture_rid);
+
+	if (_antialiased) {
+		RS::get_singleton()->canvas_item_add_triangle_array(
+				get_canvas_item(),
+				lb.indices_aa,
+				lb.vertices_aa,
+				lb.colors_aa,
+				lb.uvs_aa, Vector<int>(), Vector<float>(),
+				texture_rid);
+	}
 
 	// DEBUG: Draw wireframe
 	//	if (lb.indices.size() % 3 == 0) {

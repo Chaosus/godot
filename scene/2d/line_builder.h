@@ -50,6 +50,7 @@ public:
 	float sharp_limit = 2.f;
 	int round_precision = 8;
 	float tile_aspect = 1.f; // w/h
+	bool antialiased = false;
 	// TODO offset_joints option (offers alternative implementation of round joints)
 
 	// TODO Move in a struct and reference it
@@ -58,6 +59,11 @@ public:
 	Vector<Color> colors;
 	Vector<Vector2> uvs;
 	Vector<int> indices;
+
+	Vector<Vector2> vertices_aa;
+	Vector<Color> colors_aa;
+	Vector<Vector2> uvs_aa;
+	Vector<int> indices_aa;
 
 	LineBuilder();
 
@@ -74,13 +80,15 @@ private:
 	void strip_new_quad(Vector2 up, Vector2 down, Color color, float uvx);
 	void strip_add_quad(Vector2 up, Vector2 down, Color color, float uvx);
 	void strip_add_tri(Vector2 up, Orientation orientation);
-	void strip_add_arc(Vector2 center, float angle_delta, Orientation orientation);
+	void strip_add_arc(Vector2 center, Color color, float angle_delta, Orientation orientation);
+	void push_aa_indexes(int p_index);
 
 	void new_arc(Vector2 center, Vector2 vbegin, float angle_delta, Color color, Rect2 uv_rect);
 
 private:
 	bool _interpolate_color = false;
 	int _last_index[2] = {}; // Index of last up and down vertices of the strip
+	int _last_aa_index[2] = {};
 };
 
 #endif // LINE_BUILDER_H
