@@ -47,6 +47,8 @@ class EditorFileDialog;
 class EditorProperty;
 class MenuButton;
 class PanelContainer;
+class ConfirmationDialog;
+class RichTextLabel;
 
 class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	GDCLASS(AnimationNodeBlendTreeEditor, AnimationTreeNodeEditorPlugin);
@@ -56,12 +58,20 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	bool read_only = false;
 
 	GraphEdit *graph = nullptr;
-	MenuButton *add_node = nullptr;
+	Button *add_node = nullptr;
 	Vector2 position_from_popup_menu;
 	bool use_position_from_popup_menu;
 
+	Point2 saved_node_pos;
+	bool saved_node_pos_dirty = false;
+
 	PanelContainer *error_panel = nullptr;
 	Label *error_label = nullptr;
+
+	Tree *members = nullptr;
+	LineEdit *node_filter = nullptr;
+	RichTextLabel *node_desc = nullptr;
+	ConfirmationDialog *members_dialog = nullptr;
 
 	AcceptDialog *filter_dialog = nullptr;
 	Tree *filters = nullptr;
@@ -77,12 +87,22 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 	struct AddOption {
 		String name;
 		String type;
+		String description;
 		Ref<Script> script;
 		int input_port_count;
-		AddOption(const String &p_name = String(), const String &p_type = String(), int p_input_port_count = 0) :
+		bool is_custom = false;
+		int temp_idx = 0;
+		AddOption(const String &p_name = String(), const String &p_type = String(), const String &p_description = String(), int p_input_port_count = 0) :
 				name(p_name),
 				type(p_type),
+				description(p_description),
 				input_port_count(p_input_port_count) {
+		}
+	};
+
+	struct _OptionComparator {
+		_FORCE_INLINE_ bool operator()(const AddOption &a, const AddOption &b) const {
+			return a.name.naturalnocasecmp_to(b.name) < 0;
 		}
 	};
 
@@ -90,6 +110,16 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 
 	void _add_node(int p_idx);
 	void _update_options_menu(bool p_has_input_ports = false);
+
+	void _member_create();
+	void _member_cancel();
+	void _member_selected();
+	void _member_unselected();
+
+	void _sbox_input(const Ref<InputEvent> &p_ie);
+	void _member_filter_changed(const String &p_text);
+	void _show_members_dialog(bool at_mouse_pos, bool p_has_input_ports);
+	String _get_brief_class_description(const String &p_class_name) const;
 
 	static AnimationNodeBlendTreeEditor *singleton;
 
@@ -136,6 +166,11 @@ class AnimationNodeBlendTreeEditor : public AnimationTreeNodeEditorPlugin {
 		MENU_LOAD_FILE = 1000,
 		MENU_PASTE = 1001,
 		MENU_LOAD_FILE_CONFIRM = 1002
+	};
+
+	enum {
+		EXPAND_ALL,
+		COLLAPSE_ALL,
 	};
 
 protected:

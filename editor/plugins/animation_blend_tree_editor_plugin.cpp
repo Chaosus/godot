@@ -31,9 +31,11 @@
 #include "animation_blend_tree_editor_plugin.h"
 
 #include "core/config/project_settings.h"
+#include "core/doc_data.h"
 #include "core/input/input.h"
 #include "core/io/resource_loader.h"
 #include "core/os/keyboard.h"
+#include "editor/editor_help.h"
 #include "editor/editor_inspector.h"
 #include "editor/editor_node.h"
 #include "editor/editor_scale.h"
@@ -46,6 +48,7 @@
 #include "scene/gui/menu_button.h"
 #include "scene/gui/panel.h"
 #include "scene/gui/progress_bar.h"
+#include "scene/gui/rich_text_label.h"
 #include "scene/gui/separator.h"
 #include "scene/gui/view_panner.h"
 #include "scene/main/window.h"
@@ -59,6 +62,7 @@ void AnimationNodeBlendTreeEditor::add_custom_type(const String &p_name, const R
 	AddOption ao;
 	ao.name = p_name;
 	ao.script = p_script;
+	ao.is_custom = true;
 	add_options.push_back(ao);
 
 	_update_options_menu();
@@ -76,23 +80,73 @@ void AnimationNodeBlendTreeEditor::remove_custom_type(const Ref<Script> &p_scrip
 }
 
 void AnimationNodeBlendTreeEditor::_update_options_menu(bool p_has_input_ports) {
-	add_node->get_popup()->clear();
-	add_node->get_popup()->reset_size();
+	node_desc->set_text("");
+	members_dialog->get_ok_button()->set_disabled(true);
+
+	members->clear();
+	TreeItem *root = members->create_item();
+
+	String filter = node_filter->get_text().strip_edges();
+	bool use_filter = !filter.is_empty();
+
+	bool is_first_item = true;
+
+	Color unsupported_color = get_theme_color(SNAME("error_color"), EditorStringName(Editor));
+	Color supported_color = get_theme_color(SNAME("warning_color"), EditorStringName(Editor));
+
+	HashMap<String, TreeItem *> folders;
+
+	Vector<AddOption> custom_options;
+	Vector<AddOption> embedded_options;
+
 	for (int i = 0; i < add_options.size(); i++) {
-		if (p_has_input_ports && add_options[i].input_port_count == 0) {
-			continue;
+		if (!use_filter || add_options[i].name.findn(filter) != -1) {
+			const_cast<AddOption &>(add_options[i]).temp_idx = i;
+			embedded_options.push_back(add_options[i]);
 		}
-		add_node->get_popup()->add_item(add_options[i].name, i);
 	}
 
-	Ref<AnimationNode> clipb = EditorSettings::get_singleton()->get_resource_clipboard();
-	if (clipb.is_valid()) {
-		add_node->get_popup()->add_separator();
-		add_node->get_popup()->add_item(TTR("Paste"), MENU_PASTE);
+	Vector<AddOption> options;
+	SortArray<AddOption, _OptionComparator> sorter;
+	sorter.sort(custom_options.ptrw(), custom_options.size());
+
+	options.append_array(custom_options);
+	options.append_array(embedded_options);
+
+	for (int i = 0; i < options.size(); i++) {
+		String path = options[i].is_custom ? "Addons" : "";
+		TreeItem *category = nullptr;
+
+		if (!path.is_empty() && !folders.has(path)) {
+			Vector<String> subfolders = path.split("/");
+			category = root;
+			String path_temp = "";
+			for (int j = 0; j < subfolders.size(); j++) {
+				path_temp += subfolders[j];
+				if (!folders.has(path_temp)) {
+					category = members->create_item(category);
+					category->set_selectable(0, false);
+					category->set_collapsed(!use_filter);
+					category->set_text(0, subfolders[j]);
+					folders.insert(path_temp, category);
+				} else {
+					category = folders[path_temp];
+				}
+			}
+		} else {
+			category = folders[path];
+		}
+
+		TreeItem *item = members->create_item(category);
+		item->set_text(0, options[i].name);
+
+		if (is_first_item && use_filter) {
+			item->select(0);
+			node_desc->set_text(options[i].description);
+			is_first_item = false;
+		}
+		item->set_meta("id", options[i].temp_idx);
 	}
-	add_node->get_popup()->add_separator();
-	add_node->get_popup()->add_item(TTR("Load..."), MENU_LOAD_FILE);
-	use_position_from_popup_menu = false;
 }
 
 Size2 AnimationNodeBlendTreeEditor::get_minimum_size() const {
@@ -389,13 +443,92 @@ void AnimationNodeBlendTreeEditor::_add_node(int p_idx) {
 	undo_redo->commit_action();
 }
 
+void AnimationNodeBlendTreeEditor::_sbox_input(const Ref<InputEvent> &p_ie) {
+	Ref<InputEventKey> ie = p_ie;
+	if (ie.is_valid() && (ie->get_keycode() == Key::UP || ie->get_keycode() == Key::DOWN || ie->get_keycode() == Key::ENTER || ie->get_keycode() == Key::KP_ENTER)) {
+		members->gui_input(ie);
+		node_filter->accept_event();
+	}
+}
+
+void AnimationNodeBlendTreeEditor::_member_create() {
+	TreeItem *item = members->get_selected();
+	if (item != nullptr && item->has_meta("id")) {
+		int idx = members->get_selected()->get_meta("id");
+		_add_node(idx);
+		members_dialog->hide();
+	}
+}
+
+void AnimationNodeBlendTreeEditor::_member_selected() {
+	TreeItem *item = members->get_selected();
+
+	if (item != nullptr && item->has_meta("id")) {
+		members_dialog->get_ok_button()->set_disabled(false);
+		node_desc->set_text(add_options[item->get_meta("id")].description);
+	} else {
+		members_dialog->get_ok_button()->set_disabled(true);
+		node_desc->set_text("");
+	}
+}
+
+void AnimationNodeBlendTreeEditor::_member_unselected() {
+}
+
+void AnimationNodeBlendTreeEditor::_member_cancel() {}
+
+void AnimationNodeBlendTreeEditor::_member_filter_changed(const String &p_text) {
+	_update_options_menu();
+}
+
+void AnimationNodeBlendTreeEditor::_show_members_dialog(bool at_mouse_pos, bool p_has_input_ports) {
+	_update_options_menu(p_has_input_ports);
+
+	if (at_mouse_pos) {
+		saved_node_pos_dirty = true;
+		saved_node_pos = graph->get_local_mouse_position();
+
+		Point2 gpos = get_screen_position() + get_local_mouse_position();
+		members_dialog->set_position(gpos);
+	} else {
+		saved_node_pos_dirty = false;
+		members_dialog->set_position(graph->get_screen_position() + Point2(5 * EDSCALE, 65 * EDSCALE));
+	}
+
+	if (members_dialog->is_visible()) {
+		members_dialog->grab_focus();
+		return;
+	}
+
+	members_dialog->popup();
+
+	// Keep dialog within window bounds.
+	Rect2 window_rect = Rect2(get_window()->get_position(), get_window()->get_size());
+	Rect2 dialog_rect = Rect2(members_dialog->get_position(), members_dialog->get_size());
+	Vector2 difference = (dialog_rect.get_end() - window_rect.get_end()).max(Vector2());
+	members_dialog->set_position(members_dialog->get_position() - difference);
+
+	node_filter->call_deferred(SNAME("grab_focus")); // Still not visible.
+	node_filter->select_all();
+}
+
+String AnimationNodeBlendTreeEditor::_get_brief_class_description(const String &p_class_name) const {
+	HashMap<String, DocData::ClassDoc>::ConstIterator E = EditorHelp::get_doc_data()->class_list.find(p_class_name);
+	if (E) {
+		return E->value.brief_description.strip_edges();
+	}
+	return "";
+}
+
 void AnimationNodeBlendTreeEditor::_popup(bool p_has_input_ports, const Vector2 &p_node_position) {
 	_update_options_menu(p_has_input_ports);
-	use_position_from_popup_menu = true;
-	position_from_popup_menu = p_node_position;
-	add_node->get_popup()->set_position(graph->get_screen_position() + graph->get_local_mouse_position());
-	add_node->get_popup()->reset_size();
-	add_node->get_popup()->popup();
+	members_dialog->set_position(graph->get_screen_position() + p_node_position);
+
+	if (members_dialog->is_visible()) {
+		members_dialog->grab_focus();
+		return;
+	}
+	members_dialog->popup();
 }
 
 void AnimationNodeBlendTreeEditor::_popup_request(const Vector2 &p_position) {
@@ -830,6 +963,24 @@ void AnimationNodeBlendTreeEditor::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			_update_editor_settings();
+
+			add_options.clear();
+			add_options.push_back(AddOption("Animation", "AnimationNodeAnimation", _get_brief_class_description("AnimationNodeAnimation")));
+			add_options.push_back(AddOption("OneShot", "AnimationNodeOneShot", _get_brief_class_description("AnimationNodeOneShot"), 2));
+			add_options.push_back(AddOption("Add2", "AnimationNodeAdd2", _get_brief_class_description("AnimationNodeAdd2"), 2));
+			add_options.push_back(AddOption("Add3", "AnimationNodeAdd3", _get_brief_class_description("AnimationNodeAdd3"), 3));
+			add_options.push_back(AddOption("Blend2", "AnimationNodeBlend2", _get_brief_class_description("AnimationNodeBlend2"), 2));
+			add_options.push_back(AddOption("Blend3", "AnimationNodeBlend3", _get_brief_class_description("AnimationNodeBlend3"), 3));
+			add_options.push_back(AddOption("Sub2", "AnimationNodeSub2", _get_brief_class_description("AnimationNodeSub2"), 2));
+			add_options.push_back(AddOption("TimeSeek", "AnimationNodeTimeSeek", _get_brief_class_description("AnimationNodeTimeSeek"), 1));
+			add_options.push_back(AddOption("TimeScale", "AnimationNodeTimeScale", _get_brief_class_description("AnimationNodeTimeScale"), 1));
+			add_options.push_back(AddOption("Transition", "AnimationNodeTransition", _get_brief_class_description("AnimationNodeTransition")));
+			add_options.push_back(AddOption("BlendTree", "AnimationNodeBlendTree", _get_brief_class_description("AnimationNodeBlendTree")));
+			add_options.push_back(AddOption("BlendSpace1D", "AnimationNodeBlendSpace1D", _get_brief_class_description("AnimationNodeBlendSpace1D")));
+			add_options.push_back(AddOption("BlendSpace2D", "AnimationNodeBlendSpace2D", _get_brief_class_description("AnimationNodeBlendSpace2D")));
+			add_options.push_back(AddOption("StateMachine", "AnimationNodeStateMachine", _get_brief_class_description("AnimationNodeStateMachine")));
+
+			_update_options_menu();
 		} break;
 
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
@@ -1059,7 +1210,6 @@ void AnimationNodeBlendTreeEditor::edit(const Ref<AnimationNode> &p_node) {
 AnimationNodeBlendTreeEditor::AnimationNodeBlendTreeEditor() {
 	singleton = this;
 	updating = false;
-	use_position_from_popup_menu = false;
 
 	graph = memnew(GraphEdit);
 	add_child(graph);
@@ -1079,34 +1229,68 @@ AnimationNodeBlendTreeEditor::AnimationNodeBlendTreeEditor() {
 	float graph_lines_curvature = EDITOR_GET("editors/visual_editors/lines_curvature");
 	graph->set_connection_lines_curvature(graph_lines_curvature);
 
+	VBoxContainer *members_vb = memnew(VBoxContainer);
+	members_vb->set_v_size_flags(SIZE_EXPAND_FILL);
+
+	HBoxContainer *filter_hb = memnew(HBoxContainer);
+	members_vb->add_child(filter_hb);
+
+	node_filter = memnew(LineEdit);
+	filter_hb->add_child(node_filter);
+	node_filter->connect("text_changed", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_filter_changed));
+	node_filter->connect("gui_input", callable_mp(this, &AnimationNodeBlendTreeEditor::_sbox_input));
+	node_filter->set_h_size_flags(SIZE_EXPAND_FILL);
+	node_filter->set_placeholder(TTR("Search"));
+
+	members = memnew(Tree);
+	members_vb->add_child(members);
+	//SET_DRAG_FORWARDING_GCD(members, AnimationNodeBlendTreeEditor);
+	members->set_h_size_flags(SIZE_EXPAND_FILL);
+	members->set_v_size_flags(SIZE_EXPAND_FILL);
+	members->set_hide_root(true);
+	members->set_allow_reselect(true);
+	members->set_hide_folding(false);
+	members->set_custom_minimum_size(Size2(180 * EDSCALE, 200 * EDSCALE));
+	members->connect("item_activated", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_create));
+	members->connect("item_selected", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_selected));
+	members->connect("nothing_selected", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_unselected));
+
+	HBoxContainer *desc_hbox = memnew(HBoxContainer);
+	members_vb->add_child(desc_hbox);
+
+	Label *desc_label = memnew(Label);
+	desc_hbox->add_child(desc_label);
+	desc_label->set_text(TTR("Description:"));
+
+	desc_hbox->add_spacer();
+
+	node_desc = memnew(RichTextLabel);
+	members_vb->add_child(node_desc);
+	node_desc->set_h_size_flags(SIZE_EXPAND_FILL);
+	node_desc->set_v_size_flags(SIZE_FILL);
+	node_desc->set_custom_minimum_size(Size2(0, 70 * EDSCALE));
+
+	members_dialog = memnew(ConfirmationDialog);
+	members_dialog->set_title(TTR("Create Animation Blend Tree Node"));
+	members_dialog->set_exclusive(true);
+	members_dialog->add_child(members_vb);
+	members_dialog->set_ok_button_text(TTR("Create"));
+	members_dialog->get_ok_button()->connect("pressed", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_create));
+	members_dialog->get_ok_button()->set_disabled(true);
+	members_dialog->connect("canceled", callable_mp(this, &AnimationNodeBlendTreeEditor::_member_cancel));
+	add_child(members_dialog);
+
 	VSeparator *vs = memnew(VSeparator);
 	graph->get_menu_hbox()->add_child(vs);
 	graph->get_menu_hbox()->move_child(vs, 0);
 
-	add_node = memnew(MenuButton);
-	graph->get_menu_hbox()->add_child(add_node);
-	add_node->set_text(TTR("Add Node..."));
-	graph->get_menu_hbox()->move_child(add_node, 0);
-	add_node->get_popup()->connect("id_pressed", callable_mp(this, &AnimationNodeBlendTreeEditor::_add_node));
-	add_node->get_popup()->connect("popup_hide", callable_mp(this, &AnimationNodeBlendTreeEditor::_popup_hide), CONNECT_DEFERRED);
-	add_node->connect("about_to_popup", callable_mp(this, &AnimationNodeBlendTreeEditor::_update_options_menu).bind(false));
+	add_node = memnew(Button);
+	add_node->set_flat(true);
 	add_node->set_disabled(read_only);
-
-	add_options.push_back(AddOption("Animation", "AnimationNodeAnimation"));
-	add_options.push_back(AddOption("OneShot", "AnimationNodeOneShot", 2));
-	add_options.push_back(AddOption("Add2", "AnimationNodeAdd2", 2));
-	add_options.push_back(AddOption("Add3", "AnimationNodeAdd3", 3));
-	add_options.push_back(AddOption("Blend2", "AnimationNodeBlend2", 2));
-	add_options.push_back(AddOption("Blend3", "AnimationNodeBlend3", 3));
-	add_options.push_back(AddOption("Sub2", "AnimationNodeSub2", 2));
-	add_options.push_back(AddOption("TimeSeek", "AnimationNodeTimeSeek", 1));
-	add_options.push_back(AddOption("TimeScale", "AnimationNodeTimeScale", 1));
-	add_options.push_back(AddOption("Transition", "AnimationNodeTransition"));
-	add_options.push_back(AddOption("BlendTree", "AnimationNodeBlendTree"));
-	add_options.push_back(AddOption("BlendSpace1D", "AnimationNodeBlendSpace1D"));
-	add_options.push_back(AddOption("BlendSpace2D", "AnimationNodeBlendSpace2D"));
-	add_options.push_back(AddOption("StateMachine", "AnimationNodeStateMachine"));
-	_update_options_menu();
+	add_node->set_text(TTR("Add Node..."));
+	graph->get_menu_hbox()->add_child(add_node);
+	graph->get_menu_hbox()->move_child(add_node, 0);
+	add_node->connect("pressed", callable_mp(this, &AnimationNodeBlendTreeEditor::_show_members_dialog).bind(false, false));
 
 	error_panel = memnew(PanelContainer);
 	add_child(error_panel);
