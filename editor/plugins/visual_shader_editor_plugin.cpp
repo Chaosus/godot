@@ -6077,7 +6077,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	preview_window = memnew(Window);
 	preview_window->set_title(TTR("Generated Shader Code"));
 	preview_window->set_visible(preview_showed);
-	preview_window->set_exclusive(true);
+	preview_window->set_exclusive(false);
 	preview_window->connect("close_requested", callable_mp(this, &VisualShaderEditor::_preview_close_requested));
 	preview_window->connect("size_changed", callable_mp(this, &VisualShaderEditor::_preview_size_changed));
 	add_child(preview_window);
