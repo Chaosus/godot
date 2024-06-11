@@ -160,7 +160,6 @@ doc_classes/*                       @godotengine/documentation
 /scene/resources/font.*             @godotengine/gui-nodes
 /scene/resources/text_line.*        @godotengine/gui-nodes
 /scene/resources/text_paragraph.*   @godotengine/gui-nodes
-/scene/resources/visual_shader*.*   @godotengine/shaders
 /scene/theme/                       @godotengine/gui-nodes
 
 # Servers

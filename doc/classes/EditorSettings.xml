@@ -451,62 +451,8 @@
 		<member name="editors/tiles_editor/highlight_selected_layer" type="bool" setter="" getter="">
 			Highlight the currently selected TileMapLayer by dimming the other ones in the scene.
 		</member>
-		<member name="editors/visual_editors/category_colors/color_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Color" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/conditional_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Conditional" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/input_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Input" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/output_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Output" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/particle_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Particle" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/scalar_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Scalar" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/special_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Special" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/textures_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Textures" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/transform_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Transform" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/utility_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Utility" category.
-		</member>
-		<member name="editors/visual_editors/category_colors/vector_color" type="Color" setter="" getter="">
-			The color of a graph node's header when it belongs to the "Vector" category.
-		</member>
 		<member name="editors/visual_editors/color_theme" type="String" setter="" getter="">
 			The color theme to use in the visual shader editor.
-		</member>
-		<member name="editors/visual_editors/connection_colors/boolean_color" type="Color" setter="" getter="">
-			The color of a port/connection of boolean type.
-		</member>
-		<member name="editors/visual_editors/connection_colors/sampler_color" type="Color" setter="" getter="">
-			The color of a port/connection of sampler type.
-		</member>
-		<member name="editors/visual_editors/connection_colors/scalar_color" type="Color" setter="" getter="">
-			The color of a port/connection of scalar type (float, int, unsigned int).
-		</member>
-		<member name="editors/visual_editors/connection_colors/transform_color" type="Color" setter="" getter="">
-			The color of a port/connection of transform type.
-		</member>
-		<member name="editors/visual_editors/connection_colors/vector2_color" type="Color" setter="" getter="">
-			The color of a port/connection of Vector2 type.
-		</member>
-		<member name="editors/visual_editors/connection_colors/vector3_color" type="Color" setter="" getter="">
-			The color of a port/connection of Vector3 type.
-		</member>
-		<member name="editors/visual_editors/connection_colors/vector4_color" type="Color" setter="" getter="">
-			The color of a port/connection of Vector4 type.
 		</member>
 		<member name="editors/visual_editors/grid_pattern" type="int" setter="" getter="">
 			The pattern used for the background grid.
@@ -516,9 +462,6 @@
 		</member>
 		<member name="editors/visual_editors/minimap_opacity" type="float" setter="" getter="">
 			The opacity of the minimap displayed in the bottom-right corner of the visual shader editor.
-		</member>
-		<member name="editors/visual_editors/visual_shader/port_preview_size" type="int" setter="" getter="">
-			The size to use for port previews in the visual shader uniforms (toggled by clicking the "eye" icon next to an output). The value is defined in pixels at 100% zoom, and will scale with zoom automatically.
 		</member>
 		<member name="filesystem/directories/autoscan_project_path" type="String" setter="" getter="">
 			The folder where projects should be scanned for (recursively), in a way similar to the project manager's [b]Scan[/b] button. This can be set to the same value as [member filesystem/directories/default_project_path] for convenience.
