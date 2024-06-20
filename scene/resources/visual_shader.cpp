@@ -42,6 +42,8 @@ String make_unique_id(VisualShader::Type p_type, int p_id, const String &p_name)
 	return p_name + "_" + String(typepf[p_type]) + "_" + itos(p_id);
 }
 
+#define MKP(name) "p_" + name
+
 bool VisualShaderNode::is_simple_decl() const {
 	return simple_decl;
 }
@@ -1990,7 +1992,7 @@ Error VisualShader::_write_node(Type type, StringBuilder *p_global_code, StringB
 				if (ptr->has_method("get_input_real_name")) {
 					inputs[i] = ptr->call("get_input_real_name");
 				} else if (ptr->has_method("get_parameter_name")) {
-					inputs[i] = ptr->call("get_parameter_name");
+					inputs[i] = MKP((String)ptr->call("get_parameter_name"));
 				} else {
 					Ref<VisualShaderNodeReroute> reroute = graph[type].nodes[from_node].node;
 					if (reroute.is_valid()) {
@@ -3836,8 +3838,8 @@ String VisualShaderNodeParameterRef::generate_code(Shader::Mode p_mode, VisualSh
 			}
 			break;
 		case PARAMETER_TYPE_COLOR: {
-			String code = "	" + p_output_vars[0] + " = " + get_parameter_name() + ".rgb;\n";
-			code += "	" + p_output_vars[1] + " = " + get_parameter_name() + ".a;\n";
+			String code = "	" + p_output_vars[0] + " = " + MKP(get_parameter_name()) + ".rgb;\n";
+			code += "	" + p_output_vars[1] + " = " + MKP(get_parameter_name()) + ".a;\n";
 			return code;
 		} break;
 		case UNIFORM_TYPE_SAMPLER:
@@ -3846,7 +3848,7 @@ String VisualShaderNodeParameterRef::generate_code(Shader::Mode p_mode, VisualSh
 			break;
 	}
 
-	return "	" + p_output_vars[0] + " = " + get_parameter_name() + ";\n";
+	return "	" + p_output_vars[0] + " = " + MKP(get_parameter_name()) + ";\n";
 }
 
 void VisualShaderNodeParameterRef::_set_parameter_type(int p_type) {
