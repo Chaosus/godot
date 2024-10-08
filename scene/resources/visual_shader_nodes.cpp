@@ -1636,6 +1636,144 @@ VisualShaderNodeCubemap::VisualShaderNodeCubemap() {
 	simple_decl = false;
 }
 
+////////////// Texel Fetch
+
+String VisualShaderNodeTexelFetch::get_caption() const {
+	return "TexelFetch";
+}
+
+int VisualShaderNodeTexelFetch::get_input_port_count() const {
+	return 3;
+}
+
+VisualShaderNodeTexelFetch::PortType VisualShaderNodeTexelFetch::get_input_port_type(int p_port) const {
+	switch (p_port) {
+		case 0:
+			return PORT_TYPE_SAMPLER;
+		case 1:
+			switch (sampler_type) {
+				case SAMPLER_TYPE_2D:
+					return PORT_TYPE_VECTOR_2D;
+				case SAMPLER_TYPE_2D_ARRAY:
+					[[fallthrough]];
+				case SAMPLER_TYPE_3D:
+					return PORT_TYPE_VECTOR_3D;
+				default:
+					break;
+			}
+			return PORT_TYPE_SCALAR;
+		case 2:
+			return PORT_TYPE_SCALAR_INT;
+		default:
+			return PORT_TYPE_SCALAR;
+	}
+}
+
+String VisualShaderNodeTexelFetch::get_input_port_name(int p_port) const {
+	switch (p_port) {
+		case 0:
+			switch (sampler_type) {
+				case SAMPLER_TYPE_2D:
+					return "sampler2D";
+				case SAMPLER_TYPE_2D_ARRAY:
+					return "sampler2DArray";
+				case SAMPLER_TYPE_3D:
+					return "sampler3D";
+				default:
+					return "";
+			}
+		case 1:
+			return "coords";
+		case 2:
+			return "lod";
+		default:
+			return "";
+	}
+}
+
+int VisualShaderNodeTexelFetch::get_output_port_count() const {
+	return 1;
+}
+
+VisualShaderNodeTexelFetch::PortType VisualShaderNodeTexelFetch::get_output_port_type(int p_port) const {
+	return PORT_TYPE_VECTOR_4D;
+}
+
+String VisualShaderNodeTexelFetch::get_output_port_name(int p_port) const {
+	return "color";
+}
+
+String VisualShaderNodeTexelFetch::generate_code(Shader::Mode p_mode, VisualShader::Type p_type, int p_id, const String *p_input_vars, const String *p_output_vars, bool p_for_preview) const {
+	String id = p_input_vars[0];
+	if (id.is_empty()) {
+		return "	" + p_output_vars[0] + " = vec4(0.0);\n";
+	}
+
+	String coords;
+	if (p_input_vars[1].is_empty()) {
+		switch (sampler_type) {
+			case SAMPLER_TYPE_2D:
+				coords = "ivec2(0)";
+				break;
+			case SAMPLER_TYPE_2D_ARRAY:
+				[[fallthrough]];
+			case SAMPLER_TYPE_3D:
+				coords = "ivec3(0)";
+				break;
+			default:
+				break;
+		}
+	} else {
+		switch (sampler_type) {
+			case SAMPLER_TYPE_2D:
+				coords = "ivec2(" + p_input_vars[1] + ")";
+				break;
+			case SAMPLER_TYPE_2D_ARRAY:
+				[[fallthrough]];
+			case SAMPLER_TYPE_3D:
+				coords = "ivec3(" + p_input_vars[1] + ")";
+				break;
+		}
+	}
+
+	return "	" + p_output_vars[0] + " = texelFetch(" + id + ", " + coords + ", " + p_input_vars[2] + ");\n";
+}
+
+void VisualShaderNodeTexelFetch::set_sampler_type(SamplerType p_sampler_type) {
+	ERR_FAIL_INDEX(int(p_sampler_type), int(SAMPLER_TYPE_MAX));
+	if (sampler_type == p_sampler_type) {
+		return;
+	}
+	sampler_type = p_sampler_type;
+	emit_changed();
+}
+
+VisualShaderNodeTexelFetch::SamplerType VisualShaderNodeTexelFetch::get_sampler_type() const {
+	return sampler_type;
+}
+
+Vector<StringName> VisualShaderNodeTexelFetch::get_editable_properties() const {
+	Vector<StringName> props;
+	props.push_back("sampler_type");
+	return props;
+}
+
+void VisualShaderNodeTexelFetch::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("set_sampler_type", "value"), &VisualShaderNodeTexelFetch::set_sampler_type);
+	ClassDB::bind_method(D_METHOD("get_sampler_type"), &VisualShaderNodeTexelFetch::get_sampler_type);
+
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "sampler_type", PROPERTY_HINT_ENUM, "Sampler2D,Sampler2DArray,Sampler3D"), "set_sampler_type", "get_sampler_type");
+
+	BIND_ENUM_CONSTANT(SAMPLER_TYPE_2D);
+	BIND_ENUM_CONSTANT(SAMPLER_TYPE_2D_ARRAY);
+	BIND_ENUM_CONSTANT(SAMPLER_TYPE_3D);
+	BIND_ENUM_CONSTANT(SAMPLER_TYPE_MAX);
+}
+
+VisualShaderNodeTexelFetch::VisualShaderNodeTexelFetch() {
+	set_input_port_default_value(2, 0);
+}
+
 ////////////// Linear Depth
 
 String VisualShaderNodeLinearSceneDepth::get_caption() const {

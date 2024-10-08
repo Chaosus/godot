@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VisualShaderNodeTexelFetch" inherits="VisualShaderNode" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Performs a texel lookup within the visual shader graph.
+	</brief_description>
+	<description>
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="sampler_type" type="int" setter="set_sampler_type" getter="get_sampler_type" enum="VisualShaderNodeTexelFetch.SamplerType" default="0">
+			A type of sampler. See [enum SamplerType] for options.
+		</member>
+	</members>
+	<constants>
+		<constant name="SAMPLER_TYPE_2D" value="0" enum="SamplerType">
+			A 2D sampler type.
+		</constant>
+		<constant name="SAMPLER_TYPE_2D_ARRAY" value="1" enum="SamplerType">
+			A 2D sampler array type.
+		</constant>
+		<constant name="SAMPLER_TYPE_3D" value="2" enum="SamplerType">
+			A 3D sampler type.
+		</constant>
+		<constant name="SAMPLER_TYPE_MAX" value="3" enum="SamplerType">
+			Represents the size of the [enum SamplerType] enum.
+		</constant>
+	</constants>
+</class>

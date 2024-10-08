@@ -707,6 +707,7 @@ void register_scene_types() {
 	GDREGISTER_CLASS(VisualShaderNodeTexture2DArray);
 	GDREGISTER_CLASS(VisualShaderNodeTexture3D);
 	GDREGISTER_CLASS(VisualShaderNodeCubemap);
+	GDREGISTER_CLASS(VisualShaderNodeTexelFetch);
 	GDREGISTER_ABSTRACT_CLASS(VisualShaderNodeParameter);
 	GDREGISTER_CLASS(VisualShaderNodeParameterRef);
 	GDREGISTER_CLASS(VisualShaderNodeFloatParameter);
