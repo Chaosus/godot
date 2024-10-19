@@ -220,6 +220,7 @@ private:
 	float code_completion_pan_offset = 0.0f;
 
 	HashSet<char32_t> code_completion_prefixes;
+	HashSet<String> code_completion_swizzling_patterns;
 	List<ScriptLanguage::CodeCompletionOption> code_completion_option_submitted;
 	List<ScriptLanguage::CodeCompletionOption> code_completion_option_sources;
 	String code_completion_base;
@@ -468,11 +469,14 @@ public:
 	void set_code_completion_prefixes(const TypedArray<String> &p_prefixes);
 	TypedArray<String> get_code_completion_prefixes() const;
 
+	void add_code_completion_swizzling_pattern(const String &p_pattern);
+	void remove_code_completion_swizzling_pattern(const String &p_pattern);
+
 	String get_text_for_code_completion() const;
 
 	void request_code_completion(bool p_force = false);
 
-	void add_code_completion_option(CodeCompletionKind p_type, const String &p_display_text, const String &p_insert_text, const Color &p_text_color = Color(1, 1, 1), const Ref<Resource> &p_icon = Ref<Resource>(), const Variant &p_value = Variant(), int p_location = LOCATION_OTHER);
+	void add_code_completion_option(CodeCompletionKind p_type, const String &p_display_text, const String &p_insert_text, const Color &p_text_color = Color(1, 1, 1), const Ref<Resource> &p_icon = Ref<Resource>(), const Variant &p_value = Variant(), int p_location = LOCATION_OTHER, bool p_is_swizzling_component = false);
 	void update_code_completion_options(bool p_forced = false);
 
 	TypedArray<Dictionary> get_code_completion_options() const;
