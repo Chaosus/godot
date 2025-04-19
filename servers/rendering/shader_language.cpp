@@ -9076,7 +9076,7 @@ Error ShaderLanguage::_validate_precision(DataType p_type, DataPrecision p_preci
 	return OK;
 }
 
-bool ShaderLanguage::_parse_numeric_constant_expression(const FunctionInfo &p_function_info, float &r_constant) {
+bool ShaderLanguage::_parse_numeric_constant_expression(const FunctionInfo &p_function_info, float &r_constant, DataType *r_type) {
 	ShaderLanguage::Node *expr = _parse_and_reduce_expression(nullptr, p_function_info);
 	if (expr == nullptr) {
 		return false;
@@ -9105,6 +9105,10 @@ bool ShaderLanguage::_parse_numeric_constant_expression(const FunctionInfo &p_fu
 			break;
 		default:
 			return false;
+	}
+
+	if (r_type) {
+		*r_type = expr->get_datatype();
 	}
 
 	return true;
@@ -9940,19 +9944,20 @@ Error ShaderLanguage::_parse_shader(const HashMap<StringName, FunctionInfo> &p_f
 										return ERR_PARSE_ERROR;
 									}
 
-									tk = _get_token();
+									float value;
+									DataType dt;
 
-									if (tk.type == TK_OP_SUB) {
-										_set_error(RTR("The instance index can't be negative."));
-										return ERR_PARSE_ERROR;
-									}
-
-									if (!tk.is_integer_constant()) {
+									if (!_parse_numeric_constant_expression(constants, value, &dt) || dt == DataType::TYPE_FLOAT) {
 										_set_error(RTR("Expected an integer constant."));
 										return ERR_PARSE_ERROR;
 									}
 
-									custom_instance_index = tk.constant;
+									if (value < 0) {
+										_set_error(RTR("The instance index can't be negative."));
+										return ERR_PARSE_ERROR;
+									}
+
+									custom_instance_index = static_cast<int>(value);
 									current_uniform_instance_index_defined = true;
 
 									if (custom_instance_index >= MAX_INSTANCE_UNIFORM_INDICES) {
