@@ -36,7 +36,10 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/2d/camera_2d.h"
+#include "scene/2d/gpu_particles_2d.h"
 #include "scene/3d/camera_3d.h"
+#include "scene/3d/gpu_particles_3d.h"
 #include "scene/3d/light_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/gui/box_container.h"
@@ -48,6 +51,7 @@
 #include "scene/resources/3d/fog_material.h"
 #include "scene/resources/3d/sky_material.h"
 #include "scene/resources/canvas_item_material.h"
+#include "scene/resources/gradient_texture.h"
 #include "scene/resources/particle_process_material.h"
 
 void MaterialEditor::gui_input(const Ref<InputEvent> &p_event) {
@@ -79,6 +83,9 @@ void MaterialEditor::_update_theme_item_cache() {
 	theme_cache.box_icon = get_editor_theme_icon(SNAME("MaterialPreviewCube"));
 	theme_cache.quad_icon = get_editor_theme_icon(SNAME("MaterialPreviewQuad"));
 
+	theme_cache.particles_2d_icon = get_editor_theme_icon(SNAME("2D"));
+	theme_cache.particles_3d_icon = get_editor_theme_icon(SNAME("3D"));
+
 	theme_cache.checkerboard = get_editor_theme_icon(SNAME("Checkerboard"));
 }
 
@@ -91,6 +98,7 @@ void MaterialEditor::_notification(int p_what) {
 			sphere_switch->set_button_icon(theme_cache.sphere_icon);
 			box_switch->set_button_icon(theme_cache.box_icon);
 			quad_switch->set_button_icon(theme_cache.quad_icon);
+			particles_mode_switch->set_button_icon(particles_3d_mode ? theme_cache.particles_3d_icon : theme_cache.particles_2d_icon);
 
 			error_label->add_theme_color_override(SceneStringName(font_color), get_theme_color(SNAME("error_color"), EditorStringName(Editor)));
 		} break;
@@ -121,6 +129,7 @@ void MaterialEditor::_update_rotation() {
 	t.basis.rotate(Vector3(0, 1, 0), -rot.y);
 	t.basis.rotate(Vector3(1, 0, 0), -rot.x);
 	rotation->set_transform(t);
+	rotation_particles->set_transform(t);
 }
 
 void MaterialEditor::edit(Ref<Material> p_material, const Ref<Environment> &p_env) {
@@ -135,23 +144,39 @@ void MaterialEditor::edit(Ref<Material> p_material, const Ref<Environment> &p_en
 				layout_error->hide();
 				layout_3d->hide();
 				layout_2d->show();
+				layout_particles->hide();
 				vc->hide();
+				vcp->hide();
 				rect_instance->set_material(material);
 				break;
 			case Shader::MODE_SPATIAL:
 				layout_error->hide();
 				layout_2d->hide();
 				layout_3d->show();
+				layout_particles->hide();
 				vc->show();
+				vcp->hide();
 				sphere_instance->set_material_override(material);
 				box_instance->set_material_override(material);
 				quad_instance->set_material_override(material);
+				break;
+			case Shader::MODE_PARTICLES:
+				layout_error->hide();
+				layout_2d->hide();
+				layout_3d->hide();
+				layout_particles->show();
+				gpu_particles_2d->set_process_material(material);
+				gpu_particles_3d->set_process_material(material);
+				vc->hide();
+				vcp->show();
 				break;
 			default:
 				layout_error->show();
 				layout_2d->hide();
 				layout_3d->hide();
+				layout_particles->hide();
 				vc->hide();
+				vcp->hide();
 				is_unsupported_shader_mode = true;
 				break;
 		}
@@ -199,6 +224,27 @@ void MaterialEditor::_on_quad_switch_pressed() {
 	_set_rotation(0.0, 0.0);
 	_store_rotation_metadata();
 	EditorSettings::get_singleton()->set_project_metadata("inspector_options", "material_preview_mesh", "quad");
+}
+
+void MaterialEditor::_on_particles_mode_pressed() {
+	particles_3d_mode = !particles_3d_mode;
+	if (particles_3d_mode) {
+		viewport_particles->set_world_3d(world_3d_particles);
+		viewport_particles->set_msaa_3d(Viewport::MSAA_4X);
+		particles_mode_switch->set_button_icon(theme_cache.particles_3d_icon);
+		gpu_particles_2d->hide();
+		gpu_particles_3d->show();
+		particles_camera_2d->clear_current();
+		particles_camera_3d->make_current();
+	} else {
+		viewport_particles->set_world_3d(Ref<World3D>());
+		viewport_particles->set_msaa_3d(Viewport::MSAA_DISABLED);
+		particles_mode_switch->set_button_icon(theme_cache.particles_2d_icon);
+		gpu_particles_2d->show();
+		gpu_particles_3d->hide();
+		particles_camera_2d->make_current();
+		particles_camera_3d->clear_current();
+	}
 }
 
 MaterialEditor::MaterialEditor() {
@@ -364,6 +410,88 @@ MaterialEditor::MaterialEditor() {
 		box_instance->hide();
 		quad_switch->set_pressed_no_signal(true);
 	}
+
+	// Particles
+
+	vcp = memnew(SubViewportContainer);
+	vcp->set_stretch(true);
+	add_child(vcp);
+	vcp->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
+
+	viewport_particles = memnew(SubViewport);
+	world_3d_particles.instantiate();
+	viewport_particles->set_world_3d(world_3d_particles);
+	vcp->add_child(viewport_particles);
+	viewport_particles->set_disable_input(true);
+	viewport_particles->set_transparent_background(true);
+	viewport_particles->set_msaa_3d(Viewport::MSAA_4X);
+
+	gpu_particles_2d = memnew(GPUParticles2D);
+	viewport_particles->add_child(gpu_particles_2d);
+	gpu_particles_2d->hide();
+
+	Ref<GradientTexture2D> gradient_texture;
+	gradient_texture.instantiate();
+	gradient_texture->set_fill(GradientTexture2D::FILL_RADIAL);
+	gradient_texture->set_fill_from(Vector2(0.5f, 0.5f));
+	gradient_texture->set_fill_to(Vector2(1.0f, 1.0f));
+
+	Ref<Gradient> gradient;
+	gradient.instantiate();
+	gradient->set_color(0, Color(1, 1, 1, 1));
+	gradient->set_color(1, Color(1, 1, 1, 0));
+	gradient->set_offset(1, 0.215f);
+	gradient_texture->set_gradient(gradient);
+
+	gpu_particles_2d->set_texture(gradient_texture);
+
+	rotation_particles = memnew(Node3D);
+	viewport_particles->add_child(rotation_particles);
+
+	gpu_particles_3d = memnew(GPUParticles3D);
+	viewport_particles->add_child(gpu_particles_3d);
+
+	particle_sphere_mesh.instantiate();
+	gpu_particles_3d->set_draw_passes(1);
+	gpu_particles_3d->set_draw_pass_mesh(0, particle_sphere_mesh);
+
+	Ref<StandardMaterial3D> particle_3d_material;
+	particle_3d_material.instantiate();
+	particle_3d_material->set_albedo(Color(1, 1, 1));
+	particle_3d_material->set_flag(BaseMaterial3D::FLAG_ALBEDO_FROM_VERTEX_COLOR, true);
+	gpu_particles_3d->set_material_override(particle_3d_material);
+
+	layout_particles = memnew(HBoxContainer);
+	add_child(layout_particles);
+	layout_particles->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT, Control::PRESET_MODE_MINSIZE, 2);
+
+	VBoxContainer *vb_shape_particles = memnew(VBoxContainer);
+	layout_particles->add_child(vb_shape_particles);
+
+	particles_mode_switch = memnew(Button);
+	particles_mode_switch->set_theme_type_variation("PreviewLightButton");
+	particles_mode_switch->set_accessibility_name(TTRC("2D/3D"));
+	vb_shape_particles->add_child(particles_mode_switch);
+	particles_mode_switch->connect(SceneStringName(pressed), callable_mp(this, &MaterialEditor::_on_particles_mode_pressed));
+
+	particles_camera_2d = memnew(Camera2D);
+	particles_camera_2d->set_anchor_mode(Camera2D::ANCHOR_MODE_DRAG_CENTER);
+	viewport_particles->add_child(particles_camera_2d);
+
+	particles_camera_3d = memnew(Camera3D);
+	particles_camera_3d->set_transform(Transform3D(Basis(), Vector3(0, 0, 25.0)));
+	particles_camera_3d->set_perspective(60, 0.01, 4000);
+	particles_camera_3d->make_current();
+	rotation_particles->add_child(particles_camera_3d);
+
+	particles_light1 = memnew(DirectionalLight3D);
+	particles_light1->set_transform(Transform3D().looking_at(Vector3(-1, -1, -1), Vector3(0, 1, 0)));
+	viewport_particles->add_child(particles_light1);
+
+	particles_light2 = memnew(DirectionalLight3D);
+	particles_light2->set_transform(Transform3D().looking_at(Vector3(0, 1, 0), Vector3(0, 0, 1)));
+	particles_light2->set_color(Color(0.7, 0.7, 0.7));
+	viewport_particles->add_child(particles_light2);
 
 	Vector2 stored_rot = EditorSettings::get_singleton()->get_project_metadata("inspector_options", "material_preview_rotation", Vector2());
 	_set_rotation(stored_rot.x, stored_rot.y);

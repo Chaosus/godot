@@ -36,6 +36,7 @@
 #include "scene/resources/3d/primitive_meshes.h"
 #include "scene/resources/material.h"
 
+class Camera2D;
 class Camera3D;
 class ColorRect;
 class DirectionalLight3D;
@@ -45,6 +46,8 @@ class SubViewport;
 class SubViewportContainer;
 class Button;
 class Label;
+class GPUParticles2D;
+class GPUParticles3D;
 
 class MaterialEditor : public Control {
 	GDCLASS(MaterialEditor, Control);
@@ -70,12 +73,27 @@ class MaterialEditor : public Control {
 	Ref<SphereMesh> sphere_mesh;
 	Ref<BoxMesh> box_mesh;
 	Ref<QuadMesh> quad_mesh;
+	Ref<SphereMesh> particle_sphere_mesh;
 
 	VBoxContainer *layout_error = nullptr;
 	Label *error_label = nullptr;
 	bool is_unsupported_shader_mode = false;
 
 	HBoxContainer *layout_3d = nullptr;
+
+	SubViewportContainer *vcp = nullptr;
+	Node3D *rotation_particles = nullptr;
+	SubViewport *viewport_particles = nullptr;
+	Camera2D *particles_camera_2d = nullptr;
+	Camera3D *particles_camera_3d = nullptr;
+	GPUParticles2D *gpu_particles_2d = nullptr;
+	GPUParticles3D *gpu_particles_3d = nullptr;
+	HBoxContainer *layout_particles = nullptr;
+	Ref<World3D> world_3d_particles;
+	Button *particles_mode_switch = nullptr;
+	DirectionalLight3D *particles_light1 = nullptr;
+	DirectionalLight3D *particles_light2 = nullptr;
+	bool particles_3d_mode = true;
 
 	Ref<Material> material;
 
@@ -91,6 +109,8 @@ class MaterialEditor : public Control {
 		Ref<Texture2D> sphere_icon;
 		Ref<Texture2D> box_icon;
 		Ref<Texture2D> quad_icon;
+		Ref<Texture2D> particles_2d_icon;
+		Ref<Texture2D> particles_3d_icon;
 		Ref<Texture2D> checkerboard;
 	} theme_cache;
 
@@ -99,6 +119,7 @@ class MaterialEditor : public Control {
 	void _on_sphere_switch_pressed();
 	void _on_box_switch_pressed();
 	void _on_quad_switch_pressed();
+	void _on_particles_mode_pressed();
 
 protected:
 	virtual void _update_theme_item_cache() override;
