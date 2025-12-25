@@ -177,6 +177,10 @@ public:
 	void update_theme();
 	bool is_node_has_parameter_instances_relatively(VisualShader::Type p_type, int p_node) const;
 
+	bool can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const;
+	void drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from);
+	Variant get_drag_data_fw(const Point2 &p_point, Control *p_from);
+
 	VisualShaderGraphPlugin();
 };
 
@@ -578,6 +582,7 @@ class VisualShaderEditor : public ShaderEditor {
 
 	void _float_constant_selected(int p_which);
 
+	//void _port_move_button_gui_input(const Ref<InputEvent> &p_event, int p_node, int p_port);
 	void _add_input_port(int p_node, int p_port, int p_port_type, const String &p_name);
 	void _remove_input_port(int p_node, int p_port);
 	void _change_input_port_type(int p_type, int p_node, int p_port);
@@ -684,6 +689,21 @@ public:
 
 	VisualShaderEditor();
 	~VisualShaderEditor();
+};
+
+class VisualShaderExpressionPortBox : public HBoxContainer {
+	GDCLASS(VisualShaderExpressionPortBox, HBoxContainer);
+	Ref<VisualShaderNodeExpression> expression;
+	int port;
+
+public:
+	Ref<VisualShaderNodeExpression> get_expression() const;
+	void set_expression(const Ref<VisualShaderNodeExpression> &p_ref);
+
+	int get_port() const;
+	void set_port(int p_port);
+
+	VisualShaderExpressionPortBox();
 };
 
 class VisualShaderNodePluginDefault : public VisualShaderNodePlugin {

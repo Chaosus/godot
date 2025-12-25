@@ -4881,6 +4881,20 @@ void VisualShaderNodeGroupBase::remove_input_port(int p_id) {
 	emit_changed();
 }
 
+void VisualShaderNodeGroupBase::replace_input_port(int p_from_port, int p_to_port) {
+	ERR_FAIL_COND(!has_input_port(p_from_port));
+	ERR_FAIL_COND(!has_input_port(p_to_port));
+
+	Vector<String> inputs_strings = inputs.split(";", false);
+	String from = inputs_strings[p_from_port];
+	String to = inputs_strings[p_to_port];
+	inputs_strings.set(p_from_port, to);
+	inputs_strings.set(p_to_port, from);
+
+	_apply_port_changes();
+	emit_changed();
+}
+
 int VisualShaderNodeGroupBase::get_input_port_count() const {
 	return input_ports.size();
 }
@@ -5179,6 +5193,7 @@ void VisualShaderNodeGroupBase::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_input_port_count"), &VisualShaderNodeGroupBase::get_input_port_count);
 	ClassDB::bind_method(D_METHOD("has_input_port", "id"), &VisualShaderNodeGroupBase::has_input_port);
 	ClassDB::bind_method(D_METHOD("clear_input_ports"), &VisualShaderNodeGroupBase::clear_input_ports);
+	ClassDB::bind_method(D_METHOD("replace_input_port", "from_port", "to_port"), &VisualShaderNodeGroupBase::replace_input_port);
 
 	ClassDB::bind_method(D_METHOD("add_output_port", "id", "type", "name"), &VisualShaderNodeGroupBase::add_output_port);
 	ClassDB::bind_method(D_METHOD("remove_output_port", "id"), &VisualShaderNodeGroupBase::remove_output_port);

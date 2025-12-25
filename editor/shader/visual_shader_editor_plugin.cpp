@@ -603,6 +603,34 @@ bool VisualShaderGraphPlugin::is_node_has_parameter_instances_relatively(VisualS
 	return result;
 }
 
+bool VisualShaderGraphPlugin::can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const {
+	return false;
+}
+
+void VisualShaderGraphPlugin::drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) {
+}
+
+Variant VisualShaderGraphPlugin::get_drag_data_fw(const Point2 &p_point, Control *p_from) {
+	if (p_point == Vector2(Math::INF, Math::INF)) {
+		return Variant();
+	}
+
+	// VisualShaderExpressionPortBox *box = Object::cast_to<VisualShaderExpressionPortBox>(p_from);
+	// if (box != nullptr && box->get_expression() == get_expression()) {
+	{
+		Dictionary d;
+		// 	d["from"] = port;
+		// 	d["to"] = box->port;
+
+		Label *label = memnew(Label);
+		label->set_text("TEST"); //expression->get_input_port_name(port));
+
+		editor->set_drag_preview(label);
+		return d;
+	}
+	return Variant();
+}
+
 void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool p_just_update, bool p_update_frames) {
 	if (visual_shader.is_null() || p_type != editor->get_current_shader_type()) {
 		return;
@@ -1121,8 +1149,19 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 		} else {
 			if (valid_left) {
 				if (is_group) {
+					VisualShaderExpressionPortBox *left_hbox = memnew(VisualShaderExpressionPortBox);
+					hb->add_child(left_hbox);
+					left_hbox->set_port(j);
+					left_hbox->set_expression(expression_node);
+					SET_DRAG_FORWARDING_GCD(left_hbox, VisualShaderExpressionPortBox);
+
+					//Button *move_button = memnew(Button);
+					//move_button->set_button_icon(editor->get_editor_theme_icon(SNAME("ToolMove")));
+					//move_button->connect(SceneStringName(gui_input), callable_mp(editor, &VisualShaderEditor::_port_move_button_gui_input).bind(p_id, j), CONNECT_DEFERRED);
+					//left_hbox->add_child(move_button);
+
 					OptionButton *type_box = memnew(OptionButton);
-					hb->add_child(type_box);
+					left_hbox->add_child(type_box);
 					type_box->add_item(TTR("Float"));
 					type_box->add_item(TTR("Int"));
 					type_box->add_item(TTR("UInt"));
@@ -1137,7 +1176,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 					type_box->connect(SceneStringName(item_selected), callable_mp(editor, &VisualShaderEditor::_change_input_port_type).bind(p_id, j), CONNECT_DEFERRED);
 
 					LineEdit *name_box = memnew(LineEdit);
-					hb->add_child(name_box);
+					left_hbox->add_child(name_box);
 					name_box->set_custom_minimum_size(Size2(65 * EDSCALE, 0));
 					name_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 					name_box->set_text(name_left);
@@ -1148,7 +1187,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 					remove_btn->set_button_icon(EditorNode::get_singleton()->get_editor_theme()->get_icon(SNAME("Remove"), EditorStringName(EditorIcons)));
 					remove_btn->set_tooltip_text(TTR("Remove") + " " + name_left);
 					remove_btn->connect(SceneStringName(pressed), callable_mp(editor, &VisualShaderEditor::_remove_input_port).bind(p_id, j), CONNECT_DEFERRED);
-					hb->add_child(remove_btn);
+					left_hbox->add_child(remove_btn);
 				} else {
 					Label *label = memnew(Label);
 					label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
@@ -1201,6 +1240,10 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 					type_box->select(group_node->get_output_port_type(i));
 					type_box->set_custom_minimum_size(Size2(100 * EDSCALE, 0));
 					type_box->connect(SceneStringName(item_selected), callable_mp(editor, &VisualShaderEditor::_change_output_port_type).bind(p_id, i), CONNECT_DEFERRED);
+
+					Button *move_button = memnew(Button);
+					move_button->set_button_icon(editor->get_editor_theme_icon(SNAME("ToolMove")));
+					hb->add_child(move_button);
 				} else {
 					Label *label = memnew(Label);
 					label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
@@ -2720,6 +2763,39 @@ String VisualShaderEditor::_get_cache_key(const String &p_prop_name) const {
 	const int type = get_current_shader_type();
 	return "type" + itos(type) + ":" + p_prop_name;
 }
+
+// void VisualShaderEditor::_port_move_button_gui_input(const Ref<InputEvent> &p_event, int p_node, int p_port) {
+// 	Ref<InputEventMouseMotion> mm = p_event;
+// 	if (mm.is_valid()) {
+// 		expression_port_target = p_port;
+// 		return;
+// 	}
+
+// 	Ref<InputEventMouseButton> mb = p_event;
+// 	if (mb.is_valid() && mb->get_button_index() == MouseButton::LEFT) {
+// 		if (mb->is_pressed()) {
+// 			expression_dragged = true;
+// 			expression_node = p_node;
+// 			expression_port_from = p_port;
+// 		} else {
+// 			if (expression_dragged && p_node == expression_node && expression_port_from != expression_port_target) {
+// 				VisualShader::Type type = get_current_shader_type();
+// 				Ref<VisualShaderNodeExpression> node = visual_shader->get_node(type, p_node);
+// 				if (node.is_valid()) {
+// 					EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
+// 					undo_redo->create_action(TTR("Replace Expression Port"));
+// 					undo_redo->add_do_method(node.ptr(), "replace_input_port", expression_port_from, expression_port_target);
+// 					undo_redo->add_undo_method(node.ptr(), "replace_input_port", expression_port_target, expression_port_from);
+// 					undo_redo->commit_action();
+// 				}
+// 			}
+// 			expression_dragged = false;
+// 			expression_port_from = -1;
+// 			expression_port_target = -1;
+// 			expression_node = -1;
+// 		}
+// 	}
+// }
 
 void VisualShaderEditor::_add_input_port(int p_node, int p_port, int p_port_type, const String &p_name) {
 	VisualShader::Type type = get_current_shader_type();
@@ -8208,6 +8284,22 @@ Control *VisualShaderNodePluginDefault::create_editor(const Ref<Resource> &p_par
 	VisualShaderNodePluginDefaultEditor *editor = memnew(VisualShaderNodePluginDefaultEditor);
 	editor->setup(vseditor, p_parent_resource, editors, properties, p_node->get_editable_properties_names(), p_node);
 	return editor;
+}
+
+Ref<VisualShaderNodeExpression> VisualShaderExpressionPortBox::get_expression() const {
+	return expression;
+}
+
+void VisualShaderExpressionPortBox::set_expression(const Ref<VisualShaderNodeExpression> &p_expression) {
+	expression = p_expression;
+}
+
+int VisualShaderExpressionPortBox::get_port() const {
+	return port;
+}
+
+void VisualShaderExpressionPortBox::set_port(int p_port) {
+	port = p_port;
 }
 
 void EditorPropertyVisualShaderMode::_option_selected(int p_which) {

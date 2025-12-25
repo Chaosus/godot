@@ -838,6 +838,7 @@ public:
 	virtual int get_input_port_count() const override;
 	bool has_input_port(int p_id) const;
 	void clear_input_ports();
+	void replace_input_port(int p_from_port, int p_to_port);
 
 	void add_output_port(int p_id, int p_type, const String &p_name);
 	void remove_output_port(int p_id);
