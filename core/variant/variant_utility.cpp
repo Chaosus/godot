@@ -337,6 +337,14 @@ double VariantUtilityFunctions::log(double x) {
 	return Math::log(x);
 }
 
+double VariantUtilityFunctions::log2(double x) {
+	return Math::log2(x);
+}
+
+double VariantUtilityFunctions::log10(double x) {
+	return Math::log10(x);
+}
+
 double VariantUtilityFunctions::exp(double x) {
 	return Math::exp(x);
 }
@@ -1679,6 +1687,8 @@ void Variant::_register_variant_utility_functions() {
 
 	FUNCBINDR(pow, sarray("base", "exp"), Variant::UTILITY_FUNC_TYPE_MATH);
 	FUNCBINDR(log, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(log2, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
+	FUNCBINDR(log10, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
 	FUNCBINDR(exp, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);
 
 	FUNCBINDR(is_nan, sarray("x"), Variant::UTILITY_FUNC_TYPE_MATH);

@@ -103,7 +103,7 @@ void JSON::_stringify(String &r_result, const Variant &p_var, const String &p_in
 					r_result += num_sci + ".0";
 				}
 			} else {
-				const double magnitude = std::log10(Math::abs(num));
+				const double magnitude = Math::log10(Math::abs(num));
 				const int precision = MAX(1, 14 - (int)Math::floor(magnitude));
 				r_result += String::num(num, precision);
 			}

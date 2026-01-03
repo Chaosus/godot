@@ -1540,7 +1540,7 @@ void CodeEdit::set_line_numbers_min_digits(int p_count) {
 	}
 	line_numbers_min_digits = p_count;
 
-	int digits = MAX(line_numbers_min_digits, std::log10(get_line_count()) + 1);
+	int digits = MAX(line_numbers_min_digits, Math::log10(get_line_count()) + 1);
 	if (digits == line_number_digits) {
 		return;
 	}
@@ -3872,7 +3872,7 @@ void CodeEdit::_text_changed() {
 	}
 
 	int lc = get_line_count();
-	int new_line_number_digits = MAX(line_numbers_min_digits, std::log10(lc) + 1);
+	int new_line_number_digits = MAX(line_numbers_min_digits, Math::log10(lc) + 1);
 	if (line_number_digits != new_line_number_digits) {
 		_clear_line_number_text_cache();
 	}

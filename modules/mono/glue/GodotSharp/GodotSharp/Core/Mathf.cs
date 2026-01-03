@@ -1210,6 +1210,50 @@ namespace Godot
         }
 
         /// <summary>
+        /// Natural logarithm of base 2.
+        /// </summary>
+        /// <param name="s">The input value.</param>
+        /// <returns>The natural log2 of <paramref name="s"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Log2(float s)
+        {
+            return MathF.Log2(s);
+        }
+
+        /// <summary>
+        /// Natural logarithm of base 2.
+        /// </summary>
+        /// <param name="s">The input value.</param>
+        /// <returns>The natural log2 of <paramref name="s"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Log2(double s)
+        {
+            return Math.Log2(s);
+        }
+
+        /// <summary>
+        /// Natural logarithm of base 10.
+        /// </summary>
+        /// <param name="s">The input value.</param>
+        /// <returns>The natural log10 of <paramref name="s"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float Log10(float s)
+        {
+            return MathF.Log10(s);
+        }
+
+        /// <summary>
+        /// Natural logarithm of base 10.
+        /// </summary>
+        /// <param name="s">The input value.</param>
+        /// <returns>The natural log10 of <paramref name="s"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static double Log10(double s)
+        {
+            return Math.Log10(s);
+        }
+
+        /// <summary>
         /// Returns the maximum of two values.
         /// </summary>
         /// <param name="a">One of the values.</param>

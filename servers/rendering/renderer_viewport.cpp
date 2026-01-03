@@ -267,7 +267,7 @@ void RendererViewport::_configure_3d_render_buffers(Viewport *p_viewport) {
 
 			// At resolution scales lower than 1.0, use negative texture mipmap bias
 			// to compensate for the loss of sharpness.
-			const float texture_mipmap_bias = std::log2(MIN(scaling_3d_scale, 1.0)) + p_viewport->texture_mipmap_bias;
+			const float texture_mipmap_bias = Math::log2(MIN(scaling_3d_scale, 1.0)) + p_viewport->texture_mipmap_bias;
 
 			RenderSceneBuffersConfiguration rb_config;
 			rb_config.set_render_target(p_viewport->render_target);

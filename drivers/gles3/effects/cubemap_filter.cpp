@@ -182,7 +182,7 @@ void CubemapFilter::filter_radiance(GLuint p_source_cubemap, GLuint p_dest_cubem
 
 			float solid_angle_sample = 1.0 / (float(sample_count) * pdf + 0.0001);
 
-			float mip_level = MAX(0.5 * std::log2(solid_angle_sample / solid_angle_texel) + float(MAX(1, p_layer - 3)), 1.0);
+			float mip_level = MAX(0.5 * Math::log2(solid_angle_sample / solid_angle_texel) + float(MAX(1, p_layer - 3)), 1.0);
 
 			sample_directions[index * 4 + 3] = mip_level;
 			weight += light_vec.z;

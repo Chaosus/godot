@@ -4776,7 +4776,7 @@ Dictionary Image::compute_image_metrics(const Ref<Image> p_compared_image, bool 
 	if (!image_metric_root_mean_squared) {
 		image_metric_peak_snr = 1e+10f;
 	} else {
-		image_metric_peak_snr = CLAMP(std::log10(255.0f / image_metric_root_mean_squared) * 20.0f, 0.0f, 500.0f);
+		image_metric_peak_snr = CLAMP(Math::log10(255.0f / image_metric_root_mean_squared) * 20.0f, 0.0f, 500.0f);
 	}
 	result["max"] = image_metric_max;
 	result["mean"] = image_metric_mean;

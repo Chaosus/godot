@@ -211,6 +211,13 @@ _ALWAYS_INLINE_ float log2(float p_x) {
 	return std::log2(p_x);
 }
 
+_ALWAYS_INLINE_ double log10(double p_x) {
+	return std::log10(p_x);
+}
+_ALWAYS_INLINE_ float log10(float p_x) {
+	return std::log10(p_x);
+}
+
 _ALWAYS_INLINE_ double exp(double p_x) {
 	return std::exp(p_x);
 }
